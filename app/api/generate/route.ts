@@ -120,24 +120,6 @@ export async function POST(req: NextRequest) {
       return null;
     };
 
-    // Lite lane: flash-lite first, flash as fallback
-    const runLiteModel = async (): Promise<ModelResult> => {
-      try {
-        const result = await callModel("gemini-3.1-flash-lite-image");
-        if (result) return result;
-      } catch (err: unknown) {
-        console.warn("[Lite Model] gemini-3.1-flash-lite-image failed. Trying fallback...", err);
-      }
-
-      try {
-        const result = await callModel("gemini-3.1-flash-image");
-        if (result) return result;
-        return { success: false, error: "応答に生成結果の画像が含まれていません。" };
-      } catch (err: unknown) {
-        console.error("[Lite Model] gemini-3.1-flash-image failed.", err);
-        return { success: false, error: toUserMessage(err, "Liteモデルの画像生成に失敗しました。") };
-      }
-    };
 
     // Pro lane
     const runProModel = async (): Promise<ModelResult> => {

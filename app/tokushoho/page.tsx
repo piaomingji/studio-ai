@@ -1,7 +1,3 @@
-import Header from '@/app/components/Header'; // Wait, let's check if Header component exists. Or is Header rendered inline in page.tsx?
-// Let's see if Header exists in proshot. In proshot, Header was inline in app/page.tsx. Let's create a minimal Header layout or render inline Header here.
-// Let's look at layout.tsx. It's just children.
-// Let's write the tokushoho page with a clean inline header or back navigation so it doesn't break if Header doesn't exist.
 import Link from 'next/link';
 import Footer from '@/app/components/Footer';
 

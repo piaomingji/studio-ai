@@ -71,8 +71,9 @@ export default function Footer() {
       setContactType('その他');
       setContactSubject('');
       setContactMessage('');
-    } catch (err: any) {
-      setContactError(err.message || '接続エラーが発生しました。');
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : '接続エラーが発生しました。';
+      setContactError(errMsg);
     } finally {
       setIsSubmitting(false);
     }

@@ -120,9 +120,10 @@ export default function Pricing() {
       } else {
         throw new Error('決済URLの返却がありませんでした。');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setErrorMsg(err.message || '接続エラーが発生しました。再度お試しください。');
+      const errMsg = err instanceof Error ? err.message : '接続エラーが発生しました。再度お試しください。';
+      setErrorMsg(errMsg);
     } finally {
       setLoadingPlan(null);
     }
