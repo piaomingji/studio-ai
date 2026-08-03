@@ -1,0 +1,124 @@
+import Header from '@/app/components/Header'; // Wait, let's check if Header component exists. Or is Header rendered inline in page.tsx?
+// Let's see if Header exists in proshot. In proshot, Header was inline in app/page.tsx. Let's create a minimal Header layout or render inline Header here.
+// Let's look at layout.tsx. It's just children.
+// Let's write the tokushoho page with a clean inline header or back navigation so it doesn't break if Header doesn't exist.
+import Link from 'next/link';
+import Footer from '@/app/components/Footer';
+
+export const metadata = {
+  title: '特定商取引法に基づく表記 - Studio AI',
+};
+
+export default function TokushohoPage() {
+  return (
+    <div className="flex min-h-screen flex-col bg-slate-50/40 text-slate-900 font-sans">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b border-slate-100 bg-white/70 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="font-extrabold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-indigo-950 font-outfit">
+              Studio AI
+            </span>
+            <span className="h-2 w-2 rounded-full bg-indigo-600 animate-pulse" />
+          </Link>
+          <Link href="/" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
+            トップに戻る
+          </Link>
+        </div>
+      </header>
+
+      <main className="flex-1">
+        <div className="mx-auto max-w-3xl px-6 py-12 md:py-20">
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 text-center">
+            特定商取引法に基づく表記
+          </h1>
+          <p className="mt-4 text-center text-sm text-slate-500 font-medium">
+            Studio AIのサービスに関する特定商取引法に基づく表記です。
+          </p>
+
+          <div className="mt-12 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl shadow-slate-200/50">
+            <dl className="divide-y divide-slate-100 text-sm">
+              <div className="grid grid-cols-1 p-6 sm:grid-cols-3 sm:gap-4">
+                <dt className="font-bold text-slate-800">事業者名</dt>
+                <dd className="mt-1 text-slate-600 sm:col-span-2 sm:mt-0">
+                  Studio AI運営事務局<br />
+                  <span className="text-xs text-slate-400">
+                    ※その他事業者情報（所在地・電話番号等）については、以下のお問い合わせ窓口よりご請求いただいた場合、遅滞なく電子メール等で開示いたします。
+                  </span>
+                </dd>
+              </div>
+
+              <div className="grid grid-cols-1 p-6 sm:grid-cols-3 sm:gap-4">
+                <dt className="font-bold text-slate-800">代表者名</dt>
+                <dd className="mt-1 text-slate-600 sm:col-span-2 sm:mt-0">
+                  請求があった場合、遅滞なく電子メール等で開示します。
+                </dd>
+              </div>
+
+              <div className="grid grid-cols-1 p-6 sm:grid-cols-3 sm:gap-4">
+                <dt className="font-bold text-slate-800">所在地・電話番号</dt>
+                <dd className="mt-1 text-slate-600 sm:col-span-2 sm:mt-0">
+                  請求があった場合、遅滞なく電子メール等で開示します。
+                </dd>
+              </div>
+
+              <div className="grid grid-cols-1 p-6 sm:grid-cols-3 sm:gap-4">
+                <dt className="font-bold text-slate-800">お問い合わせ</dt>
+                <dd className="mt-1 text-slate-600 sm:col-span-2 sm:mt-0">
+                  以下のフォームよりお問い合わせください。<br />
+                  <a
+                    href="/?contact=true"
+                    className="inline-flex items-center gap-1 mt-1 text-indigo-600 hover:underline font-semibold"
+                  >
+                    お問い合わせフォーム
+                  </a>
+                </dd>
+              </div>
+
+              <div className="grid grid-cols-1 p-6 sm:grid-cols-3 sm:gap-4">
+                <dt className="font-bold text-slate-800">販売価格</dt>
+                <dd className="mt-1 text-slate-600 sm:col-span-2 sm:mt-0">
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>単発20回追加パック：1,480円（税込）</li>
+                    <li>Proプラン：月額4,980円（税込）</li>
+                    <li>法人プラン：月額19,800円（税込）</li>
+                  </ul>
+                </dd>
+              </div>
+
+              <div className="grid grid-cols-1 p-6 sm:grid-cols-3 sm:gap-4">
+                <dt className="font-bold text-slate-800">商品代金以外の必要料金</dt>
+                <dd className="mt-1 text-slate-600 sm:col-span-2 sm:mt-0">
+                  インターネット接続料金その他の電気通信回線の通信に関する費用（購入者様のご負担となります）
+                </dd>
+              </div>
+
+              <div className="grid grid-cols-1 p-6 sm:grid-cols-3 sm:gap-4">
+                <dt className="font-bold text-slate-800">お支払い方法</dt>
+                <dd className="mt-1 text-slate-600 sm:col-span-2 sm:mt-0">
+                  クレジットカード決済（Stripe）
+                </dd>
+              </div>
+
+              <div className="grid grid-cols-1 p-6 sm:grid-cols-3 sm:gap-4">
+                <dt className="font-bold text-slate-800">役務の引き渡し時期</dt>
+                <dd className="mt-1 text-slate-600 sm:col-span-2 sm:mt-0">
+                  お支払い手続き完了後、即時にご利用可能となります。
+                </dd>
+              </div>
+
+              <div className="grid grid-cols-1 p-6 sm:grid-cols-3 sm:gap-4">
+                <dt className="font-bold text-slate-800">返品・キャンセル</dt>
+                <dd className="mt-1 text-slate-600 sm:col-span-2 sm:mt-0">
+                  デジタルコンテンツ及びサービスの性質上、決済完了後の返金・返品・キャンセルは受け付けておりません。<br />
+                  定期課金（Proプラン・法人プラン）の解約は、次回課金日の前日までいつでもマイページ/設定より解約手続きを行うことができ、次回以降の請求は発生いたしません。
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
