@@ -114,15 +114,17 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ url: session.url });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Stripe Checkout Session Error:', error);
     let errMsg = 'Unknown Server Error';
     if (error) {
       if (typeof error === 'string') {
         errMsg = error;
-      } else {
-        errMsg = error.message || error.raw?.message || JSON.stringify(error);
+      } else if (error instanceof Error) {
+        errMsg = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        const errObj = error as { message?: string; raw?: { message?: string } };
+        errMsg = errObj.message || errObj.raw?.message || JSON.stringify(error);
       }
     }
     return NextResponse.json({ error: errMsg }, { status: 500 });
