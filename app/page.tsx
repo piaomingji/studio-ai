@@ -166,7 +166,7 @@ export default function Home() {
       {/* Upload & Style Selection Section */}
       <section id="upload-section" className="max-w-5xl mx-auto px-6 pb-24 scroll-mt-20">
         <div className="text-center mb-10">
-          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-3">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-3 break-keep">
             AIプロフィールを作成する
           </h2>
           <p className="text-slate-500 text-sm sm:text-base max-w-md mx-auto">
