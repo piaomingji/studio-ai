@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     const stripeKey = process.env.STRIPE_SECRET_KEY?.trim();
 
-    console.log('Stripe Key Length:', stripeKey ? stripeKey.length : 0);
+    console.log('Stripe Key:', stripeKey ? `${stripeKey.substring(0, 8)}...${stripeKey.substring(stripeKey.length - 4)}` : 'none');
 
     // Stripe Secret Key が設定されていない場合、シミュレーション決済（Mock）にリダイレクト
     if (!stripeKey || stripeKey === 'your_stripe_secret_key_here') {

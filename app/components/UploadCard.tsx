@@ -118,20 +118,40 @@ export default function UploadCard() {
       return;
     }
 
-    const maxSize = 8 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setError("ファイルサイズは8MB以下にしてください。");
-      setSelfieBase64(null);
-      setFileName(null);
-      return;
-    }
-
     setFileName(file.name);
 
     const reader = new FileReader();
     reader.onloadend = () => {
       if (typeof reader.result === "string") {
-        setSelfieBase64(reader.result);
+        const img = new window.Image();
+        img.src = reader.result;
+        img.onload = () => {
+          const maxDim = 1200; // 最大長を1200pxに設定
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const resizedBase64 = canvas.toDataURL("image/jpeg", 0.85);
+            setSelfieBase64(resizedBase64);
+          } else {
+            setSelfieBase64(reader.result as string);
+          }
+        };
       } else {
         setError("ファイルの読み込み中にエラーが発生しました。");
       }

@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     // Pro lane
     const runProModel = async (): Promise<ModelResult> => {
       try {
-        const result = await callModel("gemini-3-pro-image");
+        const result = await callModel("gemini-3.1-flash-image");
         if (result) return result;
         return { success: false, error: "応答に生成結果の画像が含まれていません。" };
       } catch (err: unknown) {
