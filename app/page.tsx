@@ -74,7 +74,7 @@ export default function Home() {
 
         {/* Subheadline (one-line) */}
         <p className="text-base sm:text-lg md:text-xl text-slate-500 max-w-2xl mx-auto font-medium mb-8 leading-relaxed text-balance">
-          履歴書用証明写真、パスポート、ビジネスプロフィール、サロンモデル風写真、お好みのカスタムスタイルまで。スタジオ予約不要で30秒で完成
+          履歴書用証明写真、パスポート、ビジネスプロフィール、サロンモデル風写真、お好みのカスタムスタイルまで！スタジオ予約不要で30秒で完成！
         </p>
 
         {/* Category chips */}
