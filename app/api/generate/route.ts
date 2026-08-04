@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       customPrompt: rawCustomPrompt,
     });
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey, vertexai: false });
 
     // Single attempt against one model; returns null if no image came back.
     const callModel = async (model: string): Promise<ModelSuccessResult | null> => {
