@@ -74,7 +74,7 @@ export default function Home() {
 
         {/* Subheadline (one-line) */}
         <p className="text-base sm:text-lg md:text-xl text-slate-500 max-w-2xl mx-auto font-medium mb-8 leading-relaxed text-balance">
-          履歴書用証明写真、パスポート、ビジネスプロフィール、サロンモデル風写真、お好みのカスタムスタイルまで — スタジオ予約不要で5分で完成
+          履歴書用証明写真、パスポート、ビジネスプロフィール、サロンモデル風写真、お好みのカスタムスタイルまで — スタジオ予約不要で30秒で完成
         </p>
 
         {/* Category chips */}
@@ -107,7 +107,7 @@ export default function Home() {
             <div className="absolute inset-0 -z-10 bg-gradient-to-r from-indigo-600 to-violet-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </button>
           <span className="text-xs text-slate-400 font-semibold tracking-wide">
-            クレジットカード登録不要 · 12種類のスタイル ＋ カスタム · 5分で高画質生成
+            クレジットカード登録不要 · 12種類のスタイル ＋ カスタム · 30秒で高画質生成
           </span>
         </div>
       </section>
