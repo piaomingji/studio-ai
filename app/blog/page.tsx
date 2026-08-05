@@ -35,7 +35,7 @@ export default function BlogListPage() {
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 break-keep">
               証明写真・プロフィール写真お役立ちブログ
             </h1>
-            <p className="mt-4 text-sm text-slate-500 font-medium">
+            <p className="mt-4 text-sm text-slate-500 font-medium break-keep">
               スマホ自撮りで綺麗かつ規定を満たした証明写真を作るためのテクニックや、印象の良いビジネスプロフィール写真を作成するコツをお届けします。
             </p>
           </div>
