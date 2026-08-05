@@ -120,6 +120,12 @@ export default function Footer() {
           >
             特定商取引法に基づく表記
           </a>
+          <Link
+            href="/blog"
+            className="transition-colors hover:text-indigo-600 hover:underline text-xs font-semibold text-slate-500"
+          >
+            ブログ
+          </Link>
         </div>
       </div>
 
