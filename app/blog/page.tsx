@@ -32,7 +32,7 @@ export default function BlogListPage() {
       <main className="flex-1">
         <div className="mx-auto max-w-5xl px-6 py-16">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 break-keep">
               証明写真・プロフィール写真お役立ちブログ
             </h1>
             <p className="mt-4 text-sm text-slate-500 font-medium">
