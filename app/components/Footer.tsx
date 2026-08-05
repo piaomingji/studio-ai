@@ -112,12 +112,14 @@ export default function Footer() {
           >
             プライバシーポリシー
           </button>
-          <Link
+          <a
             href="/tokushoho"
+            target="_blank"
+            rel="noopener noreferrer"
             className="transition-colors hover:text-indigo-600 hover:underline"
           >
             特定商取引法に基づく表記
-          </Link>
+          </a>
         </div>
       </div>
 
