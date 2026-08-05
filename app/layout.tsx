@@ -20,6 +20,8 @@ export const metadata: Metadata = {
     "スタジオ予約不要で30秒で完成！履歴書用証明写真、パスポート、ビジネスプロフィール、韓国アイドル風写真、カスタムコンセプト写真までスマホ写真1枚で完成し、印刷用シートでそのまま印刷できます。",
 };
 
+import { Analytics } from "@vercel/analytics/next";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,6 +33,7 @@ export default function RootLayout({
         className={`${notoSansJp.variable} ${outfit.variable} font-sans antialiased`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
