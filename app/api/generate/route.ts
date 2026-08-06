@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { buildPrompt, getStyle, type BgColor } from "../../lib/styles";
-import { kv } from "@vercel/kv";
+import { createClient } from "@vercel/kv";
+
+const kv = createClient({
+  url: process.env.KV_REST_API_URL || process.env.REDIS_REST_API_URL || "",
+  token: process.env.KV_REST_API_TOKEN || process.env.REDIS_REST_API_TOKEN || "",
+});
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
