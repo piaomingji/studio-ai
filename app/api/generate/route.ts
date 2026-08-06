@@ -57,17 +57,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Record generation count with 72-hour expiration (259200 seconds)
-      if (count === 0) {
-        await kv.set(key, 1, { ex: 72 * 60 * 60 });
-      } else {
-        const ttl = await kv.ttl(key);
-        if (ttl > 0) {
-          await kv.set(key, count + 1, { ex: ttl });
-        } else {
-          await kv.set(key, count + 1, { ex: 72 * 60 * 60 });
-        }
-      }
+      // Record generation count permanently
+      await kv.set(key, count + 1);
     }
 
     if (!imageBase64) {
