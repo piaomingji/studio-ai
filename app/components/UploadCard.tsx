@@ -304,6 +304,14 @@ export default function UploadCard() {
   };
 
   const handleSheetDownload = async () => {
+    if (userPlan === "free") {
+      alert("無料プランでは印刷用シートのダウンロードは制限されています。ダウンロードするには、PROまたは法人プランへのご加入をお願いいたします。");
+      const element = document.getElementById("pricing");
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+      return;
+    }
     if (!result) return;
     const best = result.pro.success ? result.pro : result.lite.success ? result.lite : null;
     if (!best) return;
@@ -400,16 +408,34 @@ export default function UploadCard() {
               </div>
 
               <div className="w-full flex gap-2 max-w-[280px]">
-                <a
-                  href={result.pro.imageUrl}
-                  download={`studio_ai_${usedStyleId}.png`}
-                  className="flex-1 text-white text-xs font-bold py-3 px-4 rounded-xl text-center flex items-center justify-center gap-1.5 transition-colors bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/10"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  保存する
-                </a>
+                {userPlan === "free" ? (
+                  <button
+                    onClick={() => {
+                      alert("無料プランでは生成画像のダウンロード制限がかかっています。ダウンロードしてご利用いただくには、PROまたは法人プランへのご加入をお願いいたします。");
+                      const element = document.getElementById("pricing");
+                      if (element) {
+                        element.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
+                    className="flex-1 text-white text-xs font-bold py-3 px-4 rounded-xl text-center flex items-center justify-center gap-1.5 transition-colors bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/10"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    保存する（要プロ登録）
+                  </button>
+                ) : (
+                  <a
+                    href={result.pro.imageUrl}
+                    download={`studio_ai_${usedStyleId}.png`}
+                    className="flex-1 text-white text-xs font-bold py-3 px-4 rounded-xl text-center flex items-center justify-center gap-1.5 transition-colors bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/10"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    保存する
+                  </a>
+                )}
                 <button
                   onClick={() => result.pro.success && handleShare(result.pro.imageUrl, usedLabel)}
                   className="bg-white border border-slate-200 hover:border-indigo-300 hover:text-indigo-600 text-slate-600 text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
