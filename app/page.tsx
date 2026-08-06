@@ -5,6 +5,7 @@ import UploadCard from "./components/UploadCard";
 import { CATEGORIES, STYLES } from "./lib/styles";
 import Pricing from "./components/Pricing";
 import Footer from "./components/Footer";
+import PwaRegister from "./components/PwaRegister";
 
 export default function Home() {
   const scrollToUpload = () => {
@@ -338,7 +339,7 @@ export default function Home() {
 
       {/* Footer */}
       <Footer />
-
+      <PwaRegister />
     </div>
   );
 }

@@ -1,0 +1,17 @@
+{
+  "name": "Studio AI - AIプロフィール・証明写真ジェネレーター",
+  "short_name": "Studio AI",
+  "description": "スマホ写真1枚で、証明写真からコンセプト写真まで約30秒で高画質生成するツールです。",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#111827",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
