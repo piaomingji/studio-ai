@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { buildPrompt, getStyle, type BgColor } from "../../lib/styles";
+import { kv } from "@vercel/kv";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,6 +37,24 @@ export async function POST(req: NextRequest) {
     const styleId: string = body.styleId ?? body.style ?? "corporate";
     const bgColor: BgColor | undefined = body.bgColor;
     const rawCustomPrompt: string | undefined = body.customPrompt;
+    const plan: string = body.plan ?? "free";
+
+    // Enforce IP-based rate limiting for free/trial plans
+    if (plan === "free" || plan === "quota") {
+      const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.ip || "127.0.0.1";
+      const key = `studio-ai:ip:${ip}`;
+      const count = (await kv.get<number>(key)) || 0;
+
+      if (count >= 3) {
+        return NextResponse.json(
+          { error: "無料お試しの制限回数（3回）を超過しました。引き続き生成するには、有料プランへのご加入をお願いいたします。" },
+          { status: 403 }
+        );
+      }
+
+      // Record generation count permanently
+      await kv.set(key, count + 1);
+    }
 
     if (!imageBase64) {
       return NextResponse.json(

@@ -250,6 +250,7 @@ export default function UploadCard() {
           styleId: selectedStyleId,
           bgColor,
           customPrompt: selectedStyleId === "custom" ? customPrompt.trim() : undefined,
+          plan: currentPlan,
         }),
       });
 
