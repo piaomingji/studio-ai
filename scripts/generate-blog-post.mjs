@@ -132,13 +132,14 @@ ${existingTitles.map(t => `- ${t}`).join('\n')}
 }
 
 async function generateArticle(selectedTopic) {
+  const currentYear = new Date().getFullYear();
   const prompt = `
 あなたのメインテーマは証明写真、プロフィール写真、人物写真の作成・加工です。
 ターゲットキーワード: "${selectedTopic.keyword}" を含み、以下のヒントに沿った高品質なSEO集客ブログ記事を生成してください。
 タイトルヒント: "${selectedTopic.titleHint}"
 
 【満たすべき条件】
-1. 読者の悩みや疑問を解決する信頼性の高い情報を含め、自然な日本語で執筆してください。
+1. 読者の悩みや疑問を解決する信頼性の高い情報を含め、自然な日本語で執筆してください。タイトルや本文中、要約（excerpt）などで「最新」や年号に言及する場合は、必ず現在の年である「${currentYear}年」を使用し、過去の年（2024年や2025年など）を使用しないでください（例：【${currentYear}年最新】）。
 2. 見出し（h2, h3）、太字（<strong>）、順不同リスト（<ul> <li>）などを使って綺麗にマークアップされたHTML本文（contentHtml）にしてください。
 3. 記事内で、従来の「街の自動証明写真機（スピード写真ボックス）」との違い・差別化（Studio AIの圧倒的なメリット）を強くアピールしてください。
    - 自宅で自撮り1枚で30秒で完成する手軽さ（外出不要）
