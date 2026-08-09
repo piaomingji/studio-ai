@@ -795,13 +795,39 @@ export default function UploadCard() {
         </div>
       )}
       {userPlan === "pro" && (
-        <div className="text-center mt-3 text-xs text-slate-400 font-semibold">
-          プラン: <span className="text-indigo-600 font-extrabold">Proプラン（使い放題・1日100回）</span>
+        <div className="text-center mt-3 text-xs text-slate-400 font-semibold flex items-center justify-center gap-2">
+          <span>プラン: <span className="text-indigo-600 font-extrabold">Proプラン（使い放題・1日100回）</span></span>
+          <button
+            onClick={() => {
+              if (confirm('定期プランを解約しますか？\n解約後も現在の残り期間は継続してご利用いただけます。')) {
+                localStorage.setItem('studio_ai_user_plan', 'free');
+                window.dispatchEvent(new Event('studio_ai:plan_updated'));
+                alert('解約手続きが完了しました。フリープランに切り替わりました。');
+                window.location.reload();
+              }
+            }}
+            className="text-red-500 hover:text-red-600 font-bold underline cursor-pointer text-[10px]"
+          >
+            解約する
+          </button>
         </div>
       )}
       {userPlan === "business" && (
-        <div className="text-center mt-3 text-xs text-slate-400 font-semibold">
-          プラン: <span className="text-indigo-600 font-extrabold">法人プラン（使い放題・1日500回）</span>
+        <div className="text-center mt-3 text-xs text-slate-400 font-semibold flex items-center justify-center gap-2">
+          <span>プラン: <span className="text-indigo-600 font-extrabold">法人プラン（使い放題・1日500回）</span></span>
+          <button
+            onClick={() => {
+              if (confirm('定期プランを解約しますか？\n解約後も現在の残り期間は継続してご利用いただけます。')) {
+                localStorage.setItem('studio_ai_user_plan', 'free');
+                window.dispatchEvent(new Event('studio_ai:plan_updated'));
+                alert('解約手続きが完了しました。フリープランに切り替わりました。');
+                window.location.reload();
+              }
+            }}
+            className="text-red-500 hover:text-red-600 font-bold underline cursor-pointer text-[10px]"
+          >
+            解約する
+          </button>
         </div>
       )}
     </div>

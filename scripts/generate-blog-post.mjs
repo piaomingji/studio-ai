@@ -230,18 +230,41 @@ Requirements for the generated prompt:
       console.log(`Using default preset eyecatch: ${defaultEyecatch}`);
       return { type: 'url', data: defaultEyecatch };
     }
-    
-    // ダイナミックに生成されたトピックの場合、キーワードをもとにUnsplashから動的に合致する画像URLを作成
-    const dynamicUnsplashUrl = `https://images.unsplash.com/featured/1200x675/?portrait,studio,idphoto&sig=${slug}`;
-    
-    // 静的なフォールバック画像リスト（他で使用済みのURLは排除する - 美しいスタジオポートレートのみ）
-    const fallbackImages = [
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1200&q=80'
+
+    // 静的なフォールバック画像リスト（他で使用済みのURLは排除する - 美しいスタジオポートレート、メイクアップ、ビフォーアフター、スタジオ設備）
+    const photoIds = [
+      // K-Pop / Classic Portrait Portraits (60)
+      'photo-1507003211169-0a1dd7228f2d', 'photo-1494790108377-be9c29b29330', 'photo-1534528741775-53994a69daeb', 'photo-1500648767791-00dcc994a43e',
+      'photo-1544005313-94ddf0286df2', 'photo-1506794778202-cad84cf45f1d', 'photo-1517841905240-472988babdf9', 'photo-1539571696357-5a69c17a67c6',
+      'photo-1524504388940-b1c1722653e1', 'photo-1488426862026-3ee34a7d66df', 'photo-1508214751196-bcfd4ca60f91', 'photo-1519085360753-af0119f7cbe7',
+      'photo-1492562080023-ab3db95bfbce', 'photo-1547425260-76bcadfb4f2c', 'photo-1501196354995-cbb51c65aaea', 'photo-1573496359142-b8d87734a5a2',
+      'photo-1580489944761-15a19d654956', 'photo-1509783236416-c9ad59bab472', 'photo-1519345182560-3f2917c472ef', 'photo-1438761681033-6461ffad8d80',
+      'photo-1485893086445-ed75865251e0', 'photo-1500048993953-d23a436266cf', 'photo-1519052537078-e6302a4968d4', 'photo-1531746020798-e6953c6e8e04',
+      'photo-1554151228-14d9def656e4', 'photo-1567532939604-b6b5b0db2604', 'photo-1580489944761-15a19d654956', 'photo-1504257406236-90dd59b30b54',
+      'photo-1531123897727-8f129e1688ce', 'photo-1506863530036-1efeddceb993', 'photo-1521119989659-a83eee488004', 'photo-1548142813-c348350df52b',
+      'photo-1552058544-f2b08422138a', 'photo-1560250097-0b93528c311a', 'photo-1566492031773-4f4e44671857', 'photo-1570295999919-56ceb5ecca61',
+      'photo-1573497019940-1c28c88b4f3e', 'photo-1589571894960-20bbe2828d02', 'photo-1607746882042-944635dfe10e', 'photo-1614644147724-2d4785d69962',
+      'photo-1619380061814-58f03707f082', 'photo-1628157582853-a796fa650a6a', 'photo-1522075469751-3a6694fb2f61', 'photo-1534308983496-4fabb1a015ee',
+      'photo-1542909168-82c3e7fdca5c', 'photo-1558203728-00f45181dd84', 'photo-1581092921461-eab62e97a780', 'photo-1584999734482-0361aecad10e',
+      'photo-1589156280159-27698a70f29e', 'photo-1599566150163-29194dcaad36', 'photo-1601412436009-d964bd02edbc', 'photo-1613145400657-3f95f48ad313',
+      'photo-1618077360395-f3068be8e001', 'photo-1618151313441-bc797fd88350', 'photo-1624561172888-ac93c696e10c', 'photo-1628890923662-2cb23c225a95',
+      'photo-1543130006-aa9b02047806', 'photo-1552374196-1ab2a1c593e8', 'photo-1595152772835-219674b2a8a6', 'photo-1584999734482-0361aecad10e',
+      // Studio Scenes & Camera/Lighting setups (20)
+      'photo-1542038784456-1ea8e935640e', 'photo-1516035069371-29a1b244cc32', 'photo-1453060113865-968ce150c724', 'photo-1603566723801-4993ef933054',
+      'photo-1520390138845-12522961e241', 'photo-1502444330042-d1a1ddf9b082', 'photo-1590602847861-f357a9332bbc', 'photo-1526374965328-7f61d4dc18c5',
+      'photo-1616469829581-73993eb86b02', 'photo-1495707902641-75cac588d2e9', 'photo-1621252179027-94459d278660', 'photo-1615247001958-f4bc92fa6a4a',
+      'photo-1492691527719-9d1e07e534b4', 'photo-1511556532299-8f662fc26c06', 'photo-1519751138087-5bf79df62d5b', 'photo-1560066984-138dadb4c035',
+      'photo-1595853035070-5f29917d2abd', 'photo-1606761568288-402b5e7d229f', 'photo-1607604276583-eef5d076aa5f', 'photo-1616440347437-b1c73416efc2',
+      // Before-After / Makeovers / Beauty / Hair Salons (20)
+      'photo-1522337360788-8b13dee7a37e', 'photo-1487412720507-e7ab37603c6f', 'photo-1512496015851-a90fb38ba796', 'photo-1596462502278-27bfdc403348',
+      'photo-1607604276583-eef5d076aa5f', 'photo-1562322140-8baeececf3df', 'photo-1527799881374-de5a91d186b5', 'photo-1616683693504-3ea7e9ad6fec',
+      'photo-1515688594390-b649af70d282', 'photo-1522337094846-8a818192de2f', 'photo-1560066984-138dadb4c035', 'photo-1595425970377-c9703cf48b6d',
+      'photo-1600948836101-f9ffda59d250', 'photo-1600334129128-685c5582fd35', 'photo-1605497746444-ac9db450f776', 'photo-1616683693504-3ea7e9ad6fec',
+      'photo-1620331311520-246422fd82f9', 'photo-1621574539437-4b7cb63120b8', 'photo-1626015276510-290f6158090d', 'photo-1632345031435-8797b2d58045'
     ];
-    
+
+    const fallbackImages = photoIds.map(id => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=80`);
+
     // 未使用の画像のみにフィルタリング
     const unusedFallbackImages = fallbackImages.filter(img => !existingEyecatches.includes(img));
     
@@ -250,8 +273,15 @@ Requirements for the generated prompt:
       console.log(`Using unused fallback Unsplash image URL: ${selectedUrl}`);
       return { type: 'url', data: selectedUrl };
     } else {
-      console.log(`Using unique dynamic Unsplash featured URL: ${dynamicUnsplashUrl}`);
-      return { type: 'url', data: dynamicUnsplashUrl };
+      // すべて使用済みの場合は、slugのハッシュ値に基づいて決定論的にプールから選択し、リンク切れを回避
+      let hash = 0;
+      for (let i = 0; i < slug.length; i++) {
+        hash = slug.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const index = Math.abs(hash) % fallbackImages.length;
+      const selectedUrl = fallbackImages[index];
+      console.log(`All fallback images used. Selecting deterministic image from pool: ${selectedUrl}`);
+      return { type: 'url', data: selectedUrl };
     }
   }
 }
