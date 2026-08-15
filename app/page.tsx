@@ -143,7 +143,7 @@ export default function Home() {
                 <span className="text-emerald-500 font-extrabold">✓</span> クレジットカード登録不要
               </div>
               <div className="flex items-center gap-1.5 text-slate-600">
-                <span className="text-emerald-500 font-extrabold">✓</span> 30秒で即時ダウンロード
+                <span className="text-emerald-500 font-extrabold">✓</span> 30秒でAI高画質生成
               </div>
             </div>
 
