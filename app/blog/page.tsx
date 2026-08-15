@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import Footer from '../components/Footer';
 import { blogPosts } from '../../lib/blog';
 import Link from 'next/link';
