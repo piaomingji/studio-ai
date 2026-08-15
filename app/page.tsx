@@ -73,17 +73,19 @@ export default function Home() {
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-[1.15] mb-6">
-              スマホの写真1枚で、<br />
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 drop-shadow-sm">
-                証明写真からプロフ写真まで
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.25] mb-6">
+              <span className="inline-block">スマホの写真1枚で、</span><br />
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 drop-shadow-sm inline-block">
+                <span className="inline-block">証明写真から</span><span className="inline-block">プロフ写真まで</span>
               </span>
             </h1>
 
             {/* Subheadline */}
             <p className="text-base sm:text-lg text-slate-600 max-w-2xl font-medium mb-8 leading-relaxed">
-              履歴書・パスポート用証明写真から、ビジネスプロフィール、サロンモデル風写真まで。<br className="hidden sm:inline" />
-              スタジオ撮影予約やメイクの手間なし！コンビニ印刷シートも全自動作成。
+              <span className="inline-block">履歴書・パスポート用証明写真、</span>
+              <span className="inline-block">ビジネスプロフ・サロンモデル風まで。</span><br className="hidden sm:inline" />
+              <span className="inline-block">スタジオ予約不要で30秒で完成！</span>
+              <span className="inline-block">印刷用シートも全自動作成。</span>
             </p>
 
             {/* Interactive Style Category Tabs / Chips */}
