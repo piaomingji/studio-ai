@@ -67,7 +67,7 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-600"></span>
               </span>
-              <span>✨ AIフォトスタジオ 2.0</span>
+              <span>✨ 次世代 AIフォトスタジオ</span>
               <span className="text-slate-300">•</span>
               <span className="text-purple-700 font-extrabold">予約不要・30秒で完成</span>
             </div>
