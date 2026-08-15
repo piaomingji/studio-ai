@@ -56,60 +56,87 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative pt-20 pb-12 md:pt-32 md:pb-20 px-6 max-w-7xl mx-auto text-center">
-        {/* Eyebrow Tag */}
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100/80 mb-8 animate-fade-in shadow-sm">
-          <span className="flex h-2 w-2 relative">
+        {/* Ambient Glow Pill */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold bg-gradient-to-r from-indigo-50/90 via-purple-50/90 to-indigo-50/90 text-indigo-700 border border-indigo-200/60 mb-8 shadow-sm backdrop-blur-md">
+          <span className="flex h-2.5 w-2.5 relative">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-600"></span>
           </span>
-          AIフォトスタジオ
+          <span>AIフォトスタジオ</span>
+          <span className="text-slate-300">|</span>
+          <span className="text-indigo-600 font-bold">スタジオ予約不要・30秒高精細生成</span>
         </div>
 
         {/* Main Japanese Headline */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-[1.15] mb-6 max-w-4xl mx-auto text-balance">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-slate-900 tracking-tight leading-[1.15] mb-6 max-w-5xl mx-auto text-balance">
           スマホの写真1枚で、<br className="hidden sm:inline" />
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600">
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 drop-shadow-sm">
             証明写真からコンセプト写真まで
           </span>
         </h1>
 
-        {/* Subheadline (one-line) */}
-        <p className="text-base sm:text-lg md:text-xl text-slate-500 max-w-2xl mx-auto font-medium mb-8 leading-relaxed text-balance">
+        {/* Subheadline */}
+        <p className="text-base sm:text-lg md:text-xl text-slate-600 max-w-3xl mx-auto font-medium mb-10 leading-relaxed text-balance">
           履歴書用証明写真、パスポート、ビジネスプロフィール、サロンモデル風写真、お好みのカスタムスタイルまで！スタジオ予約不要で30秒で完成！
         </p>
 
-        {/* Category chips */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
+        {/* Cohesive Glassmorphic Category & Feature Chips */}
+        <div className="flex flex-wrap items-center justify-center gap-2.5 max-w-4xl mx-auto mb-10">
           {CATEGORIES.map((cat) => (
-            <span
+            <button
               key={cat.id}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-white/80 text-slate-600 border border-slate-200/80 shadow-sm"
+              onClick={scrollToUpload}
+              className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-white/80 hover:bg-white text-slate-700 border border-slate-200/80 hover:border-indigo-300 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
             >
-              {cat.emoji} {cat.label}
-            </span>
+              <span className="text-base group-hover:scale-110 transition-transform">{cat.emoji}</span>
+              <span>{cat.label}</span>
+            </button>
           ))}
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-sm">
-            🖨️ 印刷用シート自動作成
-          </span>
-        </div>
-
-        {/* Primary CTA button */}
-        <div className="flex flex-col items-center gap-3">
           <button
             onClick={scrollToUpload}
-            className="group relative inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white font-bold text-lg px-8 py-4.5 rounded-2xl transition-all duration-300 shadow-xl shadow-slate-950/10 hover:shadow-2xl hover:shadow-indigo-500/20 active:scale-[0.98] overflow-hidden"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 hover:from-indigo-500/20 hover:to-purple-500/20 text-indigo-700 border border-indigo-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
           >
-            <span className="relative z-10 flex items-center gap-2">
+            <span className="text-base">🖨️</span>
+            <span>印刷用シート自動作成</span>
+          </button>
+        </div>
+
+        {/* Primary CTA button with glowing sweep effect */}
+        <div className="flex flex-col items-center gap-4">
+          <button
+            onClick={scrollToUpload}
+            className="group relative inline-flex items-center justify-center bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-lg sm:text-xl px-10 py-5 rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/25 hover:shadow-2xl hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
+          >
+            <span className="relative z-10 flex items-center gap-3">
               AIプロフィールを作成する
-              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <svg className="w-6 h-6 group-hover:translate-x-1.5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
             </span>
-            <div className="absolute inset-0 -z-10 bg-gradient-to-r from-indigo-600 to-violet-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           </button>
-          <span className="text-xs text-slate-400 font-semibold tracking-wide">
-            クレジットカード登録不要 · 12種類のスタイル ＋ カスタム · 30秒で高画質生成
-          </span>
+
+          {/* Trust badges */}
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-semibold text-slate-500 mt-1">
+            <span className="inline-flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-emerald-500 fill-current" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              クレジットカード登録不要
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-emerald-500 fill-current" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              12種類のスタイル＋カスタム
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-emerald-500 fill-current" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              30秒で高画質生成
+            </span>
+          </div>
         </div>
       </section>
 
