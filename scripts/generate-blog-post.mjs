@@ -182,7 +182,10 @@ Create a highly detailed, descriptive English prompt for generating a blog cover
 Article Title: ${title}
 Article Excerpt: ${excerpt}
 
-Requirements for the generated prompt:
+MANDATORY REQUIREMENTS FOR HIGH-CTR CLICK-WORTHY IMAGES:
+1. MUST be photorealistic, ultra-high quality, 8k resolution studio portrait photography of an attractive Japanese person.
+2. Must feature warm, inviting studio lighting, sharp focus, clean background, and elegant aesthetic.
+3. NO uncanny artifacts, NO text, NO empty distorted scenes.
 1. Describe a realistic, high-quality, professional studio portrait photograph of an Asian person (either man or woman in neat clothing).
 2. The image MUST visually represent the theme of the article. For example:
    - If the article is about "formal ID photo" or "passport", describe a professional head-and-shoulders portrait of an Asian person in a clean dark suit, facing directly forward, with flat studio lighting and a plain white or light blue backdrop.
