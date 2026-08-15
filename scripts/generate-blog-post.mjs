@@ -345,14 +345,7 @@ async function main() {
       const imageFilename = `${article.slug}.jpg`;
       const imagePath = path.join(blogDir, imageFilename);
       fs.writeFileSync(imagePath, resultImage.data);
-      console.log();
-      try {
-        const pyCmd = ;
-        execSync(pyCmd, { stdio: 'ignore' });
-        console.log();
-      } catch (err) {
-        console.warn();
-      }
+      console.log(`Saved eyecatch image to ${imagePath}`);
       article.eyecatch = `/blog/${imageFilename}`;
     } else {
       console.log(`Using fallback Unsplash image URL: ${resultImage.data}`);
