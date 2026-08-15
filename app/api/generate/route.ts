@@ -8,6 +8,27 @@ const kv = createClient({
   token: process.env.KV_REST_API_TOKEN || process.env.REDIS_REST_API_TOKEN || "",
 });
 
+async function safeKvGet(key: string): Promise<number> {
+  try {
+    if (!process.env.KV_REST_API_URL && !process.env.REDIS_REST_API_URL) return 0;
+    const val = await kv.get<number>(key);
+    return typeof val === "number" ? val : 0;
+  } catch (e) {
+    console.warn("KV get failed:", e);
+    return 0;
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function safeKvSet(key: string, value: number, opts?: any) {
+  try {
+    if (!process.env.KV_REST_API_URL && !process.env.REDIS_REST_API_URL) return;
+    await kv.set(key, value, opts);
+  } catch (e) {
+    console.warn("KV set failed:", e);
+  }
+}
+
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
@@ -48,7 +69,7 @@ export async function POST(req: NextRequest) {
     if (plan === "free" || plan === "quota") {
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.ip || "127.0.0.1";
       const key = `studio-ai:ip:${ip}`;
-      const count = (await kv.get<number>(key)) || 0;
+      const count = await safeKvGet(key);
 
       if (count >= 3) {
         return NextResponse.json(
@@ -58,7 +79,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Record generation count permanently
-      await kv.set(key, count + 1);
+      await safeKvSet(key, count + 1);
     }
 
     if (!imageBase64) {
