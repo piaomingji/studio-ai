@@ -42,7 +42,7 @@ const LOADING_MESSAGES = [
 const FUN_STYLE_IDS = STYLES.filter((s) => s.category === "fun").map((s) => s.id);
 
 export default function UploadCard() {
-  const { openAuthModal, updateUserCredits } = useAuth();
+  const { user, openAuthModal, updateUserCredits } = useAuth();
   const [selfieBase64, setSelfieBase64] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [category, setCategory] = useState<CategoryId>("business");
@@ -221,21 +221,20 @@ export default function UploadCard() {
       return;
     }
 
-    const currentPlan = localStorage.getItem("studio_ai_user_plan") || "free";
-    const currentCountRaw = localStorage.getItem("studio_ai_free_generations") || "3";
-    const currentCount = Number(currentCountRaw);
-
-    if ((currentPlan === "free" || currentPlan === "quota") && currentCount <= 0) {
-      setError(currentPlan === "free"
-        ? "無料お試しの3回分をすべて使用しました。引き続き生成するには、以下の料金プランをご検討ください。"
-        : "所持している生成枠（クレジット）がなくなりました。引き続き生成するには、生成枠を追加購入してください。"
-      );
-      // Scroll to pricing section smoothly after a short delay
-      setTimeout(() => {
-        const pricingEl = document.getElementById("pricing");
-        pricingEl?.scrollIntoView({ behavior: "smooth" });
-      }, 500);
-      return;
+    if (user) {
+      if (user.plan === "free" && user.credits <= 0) {
+        setError("所持している生成クレジット（残り0回）がなくなりました。引き続き生成するには、料金プランのご加入または追加クレジットのご購入をお願いいたします。");
+        setTimeout(() => {
+          document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+        }, 500);
+        return;
+      }
+    } else {
+      if (freeCount <= 0) {
+        setError("無料お試しの制限回数（3回）を超過しました。無料会員登録をすると+3回分（計6回）のクレジットを獲得できます！");
+        openAuthModal();
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -252,7 +251,7 @@ export default function UploadCard() {
           styleId: selectedStyleId,
           bgColor,
           customPrompt: selectedStyleId === "custom" ? customPrompt.trim() : undefined,
-          plan: currentPlan,
+          plan: user ? user.plan : userPlan,
         }),
       });
 
@@ -267,11 +266,8 @@ export default function UploadCard() {
 
       if (typeof data.remainingCredits === "number") {
         updateUserCredits(data.remainingCredits);
-      }
-
-      // Decrement free count if on free or quota plan
-      if (currentPlan === "free" || currentPlan === "quota") {
-        const nextCount = Math.max(0, currentCount - 1);
+      } else if (!user) {
+        const nextCount = Math.max(0, freeCount - 1);
         localStorage.setItem("studio_ai_free_generations", String(nextCount));
         setFreeCount(nextCount);
       }
@@ -793,7 +789,11 @@ export default function UploadCard() {
       </button>
 
       {/* Remaining quota display */}
-      {userPlan === "free" && (
+      {user ? (
+        <div className="text-center mt-3 text-xs text-slate-400 font-semibold">
+          会員特典クレジット: 残り <span className="text-indigo-600 font-extrabold">{user.credits}</span> 回
+        </div>
+      ) : (
         <div className="text-center mt-3 text-xs text-slate-400 font-semibold">
           無料お試し枠: 残り <span className="text-indigo-600 font-extrabold">{freeCount}</span> 回
         </div>
