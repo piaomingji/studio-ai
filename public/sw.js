@@ -1,17 +1,7 @@
-const CACHE_NAME = 'studio-ai-cache-v1';
-const urlsToCache = [
-  '/',
-  '/manifest.json',
-  '/icon.png'
-];
+const CACHE_NAME = 'studio-ai-cache-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
-    })
-  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -19,9 +9,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
+          return caches.delete(cacheName);
         })
       );
     }).then(() => self.clients.claim())
@@ -29,6 +17,13 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  if (event.request.mode === 'navigate' || event.request.url.includes('/blog')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
