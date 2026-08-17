@@ -32,6 +32,8 @@ export const metadata: Metadata = {
 };
 
 import { Analytics } from "@vercel/analytics/next";
+import { AuthProvider } from "../context/AuthContext";
+import { AuthModal } from "../components/AuthModal";
 
 export default function RootLayout({
   children,
@@ -43,7 +45,10 @@ export default function RootLayout({
       <body
         className={`${notoSansJp.variable} ${outfit.variable} font-sans antialiased`}
       >
-        {children}
+        <AuthProvider>
+          {children}
+          <AuthModal />
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

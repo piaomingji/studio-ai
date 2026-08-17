@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { getCurrentUser, addUserCredits } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -25,6 +26,14 @@ export async function POST(req: NextRequest) {
       console.error('Error sanitizing headers:', e);
     }
 
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "決済をご利用いただくにはログインが必要です。", requiresAuth: true },
+        { status: 401 }
+      );
+    }
+
     const { planId } = await req.json();
     const origin = req.headers.get('origin') || 'http://localhost:3000';
 
@@ -35,6 +44,12 @@ export async function POST(req: NextRequest) {
     // Stripe Secret Key が設定されていない場合、シミュレーション決済（Mock）にリダイレクト
     if (!stripeKey || stripeKey === 'your_stripe_secret_key_here') {
       console.warn('STRIPE_SECRET_KEY is not configured. Running in Mock Mode.');
+      // Auto credit user in mock mode for instant testing!
+      if (planId === 'quota') {
+        await addUserCredits(user.id, 20);
+      } else if (planId === 'pro' || planId === 'business') {
+        await addUserCredits(user.id, 100, 'pro');
+      }
       return NextResponse.json({
         url: `${origin}/checkout-success?mock=true&plan=${planId}`,
       });
@@ -48,6 +63,8 @@ export async function POST(req: NextRequest) {
       // Pro Plan: Monthly Subscription
       session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
+        client_reference_id: user.id,
+        customer_email: user.email,
         line_items: [
           {
             price_data: {
@@ -70,6 +87,8 @@ export async function POST(req: NextRequest) {
       // Business Plan: Monthly Subscription (5 users, 500 generations/day)
       session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
+        client_reference_id: user.id,
+        customer_email: user.email,
         line_items: [
           {
             price_data: {
@@ -92,6 +111,8 @@ export async function POST(req: NextRequest) {
       // Quota Pack: One-time payment (20 generations)
       session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
+        client_reference_id: user.id,
+        customer_email: user.email,
         line_items: [
           {
             price_data: {

@@ -11,6 +11,7 @@ import {
 } from "../lib/styles";
 import { PRINT_SIZES, generatePhotoSheet, type PrintSize } from "../lib/photoSheet";
 import CompareSlider from "./CompareSlider";
+import { useAuth } from "../../context/AuthContext";
 
 interface ModelSuccessResult {
   success: true;
@@ -41,6 +42,7 @@ const LOADING_MESSAGES = [
 const FUN_STYLE_IDS = STYLES.filter((s) => s.category === "fun").map((s) => s.id);
 
 export default function UploadCard() {
+  const { openAuthModal, updateUserCredits } = useAuth();
   const [selfieBase64, setSelfieBase64] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [category, setCategory] = useState<CategoryId>("business");
@@ -257,7 +259,14 @@ export default function UploadCard() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.requiresAuth) {
+          openAuthModal();
+        }
         throw new Error(data.error || "AIイメージの生成中にエラーが発生しました。");
+      }
+
+      if (typeof data.remainingCredits === "number") {
+        updateUserCredits(data.remainingCredits);
       }
 
       // Decrement free count if on free or quota plan

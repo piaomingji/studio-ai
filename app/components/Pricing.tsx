@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Reveal from './Reveal';
+import { useAuth } from '../../context/AuthContext';
 
 type PlanCardProps = {
   title: string;
@@ -87,10 +88,16 @@ function PlanCard({
 }
 
 export default function Pricing() {
+  const { user, openAuthModal } = useAuth();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleCheckout = async (planId: 'quota' | 'pro' | 'business') => {
+    if (!user) {
+      openAuthModal();
+      return;
+    }
+
     setLoadingPlan(planId);
     setErrorMsg(null);
 
@@ -98,12 +105,14 @@ export default function Pricing() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'omit',
         body: JSON.stringify({ planId }),
       });
 
       const data = await res.json();
       if (!res.ok) {
+        if (data && data.requiresAuth) {
+          openAuthModal();
+        }
         let errMsg = '決済URLの取得に失敗しました。';
         if (data && data.error) {
           if (typeof data.error === 'string') {

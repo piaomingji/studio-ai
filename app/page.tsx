@@ -9,6 +9,7 @@ import PwaRegister from "./components/PwaRegister";
 
 import Link from "next/link";
 import { blogPosts } from "../lib/blog";
+import { UserNav } from "../components/UserNav";
 
 export default function Home() {
   const scrollToUpload = () => {
@@ -47,10 +48,11 @@ export default function Home() {
               <Link href="/blog" className="hover:text-indigo-600 transition-colors">ブログ</Link>
             </nav>
           </div>
-          <div>
+          <div className="flex items-center gap-3">
+            <UserNav />
             <button
               onClick={scrollToUpload}
-              className="bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-xl transition-all duration-200 shadow-md shadow-slate-950/5 active:scale-[0.98]"
+              className="bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-xl transition-all duration-200 shadow-md shadow-slate-950/5 active:scale-[0.98] hidden sm:block"
             >
               はじめる
             </button>
