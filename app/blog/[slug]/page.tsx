@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: PageProps) {
     };
   }
 
-  const siteUrl = 'https://studio-ai-nu-two.vercel.app';
+  const siteUrl = 'https://studio.smart-ai-portal.com';
   const imageUrl = post.eyecatch.startsWith('http') 
     ? post.eyecatch 
     : `${siteUrl}${post.eyecatch}`;

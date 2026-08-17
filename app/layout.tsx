@@ -15,10 +15,20 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://studio.smart-ai-portal.com"),
   title: "Studio AI — スマホ写真1枚で証明写真からコンセプト写真まで",
   description:
     "スタジオ予約不要で30秒で完成！履歴書用証明写真、パスポート、ビジネスプロフィール、サロンモデル風写真、カスタムコンセプト写真までスマホ写真1枚で完成し、印刷用シートでそのまま印刷できます。",
   manifest: "/manifest.json",
+  openGraph: {
+    title: "Studio AI — スマホ写真1枚で証明写真からコンセプト写真まで",
+    description:
+      "スタジオ予約不要で30秒で完成！履歴書用証明写真、パスポート、ビジネスプロフィール、サロンモデル風写真までスマホ写真1枚で完成。",
+    url: "https://studio.smart-ai-portal.com",
+    siteName: "Studio AI",
+    locale: "ja_JP",
+    type: "website",
+  },
 };
 
 import { Analytics } from "@vercel/analytics/next";
