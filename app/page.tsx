@@ -7,6 +7,9 @@ import Pricing from "./components/Pricing";
 import Footer from "./components/Footer";
 import PwaRegister from "./components/PwaRegister";
 
+import Link from "next/link";
+import { blogPosts } from "../lib/blog";
+
 export default function Home() {
   const scrollToUpload = () => {
     const element = document.getElementById("upload-section");
@@ -41,6 +44,7 @@ export default function Home() {
               <a href="#how-it-works" className="hover:text-indigo-600 transition-colors">ご利用方法</a>
               <a href="#showcase" className="hover:text-indigo-600 transition-colors">スタイルギャラリー</a>
               <a href="#pricing" className="hover:text-indigo-600 transition-colors">料金プラン</a>
+              <Link href="/blog" className="hover:text-indigo-600 transition-colors">ブログ</Link>
             </nav>
           </div>
           <div>
@@ -458,6 +462,62 @@ export default function Home() {
               </svg>
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* Blog Preview Section */}
+      <section className="py-16 px-6 max-w-7xl mx-auto border-t border-slate-100">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 mb-3">
+              <span>📰 STUDIO AI BLOG</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              証明写真・プロフィール写真お役立ちコラム
+            </h2>
+          </div>
+          <Link
+            href="/blog"
+            className="mt-4 md:mt-0 text-sm font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1 transition-colors"
+          >
+            ブログ記事一覧を見る
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {blogPosts.slice(0, 3).map((post) => (
+            <article
+              key={post.slug}
+              className="group bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
+            >
+              <Link href={`/blog/${post.slug}`} className="block relative aspect-video overflow-hidden bg-slate-100">
+                <img
+                  src={post.eyecatch}
+                  alt={post.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </Link>
+              <div className="p-5 flex flex-col flex-1">
+                <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                  <time dateTime={post.date}>{post.date.replace(/-/g, '/')}</time>
+                </div>
+                <h3 className="font-bold text-slate-900 text-sm mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                  <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+                </h3>
+                <p className="text-xs text-slate-500 line-clamp-2 mb-4 flex-1">{post.excerpt}</p>
+                <Link
+                  href={`/blog/${post.slug}`}
+                  className="text-xs font-bold text-indigo-600 hover:underline inline-flex items-center gap-1 mt-auto"
+                >
+                  続きを読む →
+                </Link>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 

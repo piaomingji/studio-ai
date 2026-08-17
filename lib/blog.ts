@@ -266,9 +266,6 @@ export const blogPosts: BlogPost[] = [
   "eyecatch": "/blog/professional-audition-interview-photos-2026.jpg",
   "date": "2026-08-08"
 },
-=======
-export const blogPosts: BlogPost[] = [
->>>>>>> ea759f7 (feat: AIによる自動ブログ記事生成と追加)
   {
   "slug": "ai-id-photo-speed-photo-studio-comparison-2026",
   "title": "【2026年最新】徹底比較！AI証明写真・スピード写真・写真館どれを選ぶ？目的別おすすめと賢い選び方",
