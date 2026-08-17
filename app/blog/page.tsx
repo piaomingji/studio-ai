@@ -113,4 +113,4 @@ export default function BlogListPage() {
   );
 }
 
-// Rebuild trigger: 2026-08-17 12:51 JST - sw cache purge
+// Rebuild trigger: 2026-08-17T18:34:32.541Z
