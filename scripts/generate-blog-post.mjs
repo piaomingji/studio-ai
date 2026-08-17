@@ -373,6 +373,18 @@ async function main() {
     
     fs.writeFileSync(filePath, newContent, 'utf-8');
     console.log('Successfully added new article to lib/blog.ts');
+
+    // app/blog/page.tsx のリビルドタイムスタンプを更新して Vercel の静的ページ再構築を確実にトリガー
+    const blogPagePath = path.join(process.cwd(), 'app', 'blog', 'page.tsx');
+    if (fs.existsSync(blogPagePath)) {
+      let blogPageContent = fs.readFileSync(blogPagePath, 'utf-8');
+      blogPageContent = blogPageContent.replace(
+        /\/\/ Rebuild trigger: .*/,
+        `// Rebuild trigger: ${new Date().toISOString()}`
+      );
+      fs.writeFileSync(blogPagePath, blogPageContent, 'utf-8');
+      console.log('Updated app/blog/page.tsx rebuild timestamp');
+    }
   } catch (error) {
     console.error('Failed to run blog generation:', error);
     process.exit(1);

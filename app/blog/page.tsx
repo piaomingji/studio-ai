@@ -113,4 +113,4 @@ export default function BlogListPage() {
   );
 }
 
-// Rebuild trigger: 2026-08-15 15:30 JST
+// Rebuild trigger: 2026-08-17 11:18 JST
