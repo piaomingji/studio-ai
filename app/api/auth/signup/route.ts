@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password, name } = body;
+    const { email, password, name, guestQuotaRemaining } = body;
 
     if (!email || !email.includes("@")) {
       return NextResponse.json({ error: "有効なメールアドレスを入力してください。" }, { status: 400 });
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       email: email.trim().toLowerCase(),
       name: name?.trim() || email.split("@")[0],
       plan: "free",
-      credits: 6, // Bonus 3 free trial credits on sign up
+      credits: typeof guestQuotaRemaining === "number" ? Math.min(6, Math.max(0, guestQuotaRemaining) + 3) : 6, // Bonus 3 free trial credits on sign up
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

@@ -46,6 +46,7 @@ export async function createSessionToken(user: UserProfile): Promise<string> {
     email: user.email,
     name: user.name,
     plan: user.plan,
+    credits: user.credits,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -178,8 +179,9 @@ export async function verifyUserPassword(userId: string, password: string): Prom
 }
 
 // Deduct 1 Credit for User
-export async function deductUserCredit(userId: string): Promise<{ success: boolean; remainingCredits: number }> {
-  const user = await getUserById(userId);
+export async function deductUserCredit(userId?: string): Promise<{ success: boolean; remainingCredits: number }> {
+  const user = await getCurrentUser();
+  if (userId && !user) console.log(userId);
   if (!user) return { success: false, remainingCredits: 0 };
 
   if (user.plan === "pro" || user.plan === "unlimited") {
@@ -193,6 +195,13 @@ export async function deductUserCredit(userId: string): Promise<{ success: boole
   user.credits = Math.max(0, user.credits - 1);
   user.updatedAt = new Date().toISOString();
   await saveUser(user);
+
+  try {
+    const newToken = await createSessionToken(user);
+    await setSessionCookie(newToken);
+  } catch (err) {
+    console.warn("Failed to update session cookie on deduct:", err);
+  }
 
   return { success: true, remainingCredits: user.credits };
 }
