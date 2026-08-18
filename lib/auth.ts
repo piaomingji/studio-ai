@@ -75,7 +75,18 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
     if (!payload || !payload.sub) return null;
 
     const userId = payload.sub as string;
-    return await getUserById(userId);
+    const kvUser = await getUserById(userId);
+    if (kvUser) return kvUser;
+
+    return {
+      id: userId,
+      email: (payload.email as string) || "",
+      name: (payload.name as string) || "",
+      plan: (payload.plan as "free" | "pro" | "unlimited") || "free",
+      credits: typeof payload.credits === "number" ? payload.credits : 10,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
   } catch {
     return null;
   }
@@ -153,8 +164,12 @@ export async function getUserByEmail(email: string): Promise<UserProfile | null>
       userId = memoryUserByEmail.get(normalizedEmail) || null;
     }
 
-    if (!userId) return null;
-    return await getUserById(userId);
+    if (userId) {
+      const user = await getUserById(userId);
+      if (user) return user;
+    }
+
+    return await getRegisteredUserFromCookie(normalizedEmail);
   } catch {
     return null;
   }
@@ -181,8 +196,10 @@ export async function verifyUserPassword(userId: string, password: string): Prom
 
 // Deduct 1 Credit for User
 export async function deductUserCredit(userId?: string): Promise<{ success: boolean; remainingCredits: number }> {
-  const user = await getCurrentUser();
-  if (userId && !user) console.log(userId);
+  let user = await getCurrentUser();
+  if (!user && userId) {
+    user = await getUserById(userId);
+  }
   if (!user) return { success: false, remainingCredits: 0 };
 
   if (user.plan === "pro" || user.plan === "unlimited") {

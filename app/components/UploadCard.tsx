@@ -266,10 +266,12 @@ export default function UploadCard() {
 
       if (typeof data.remainingCredits === "number") {
         updateUserCredits(data.remainingCredits);
-      } else if (!user) {
+      }
+      if (!user) {
         const nextCount = Math.max(0, freeCount - 1);
         localStorage.setItem("studio_ai_free_generations", String(nextCount));
         setFreeCount(nextCount);
+        window.dispatchEvent(new Event("storage"));
       }
 
       setUsedStyleId(selectedStyleId);
