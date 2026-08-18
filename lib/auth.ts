@@ -67,7 +67,7 @@ export async function verifySessionToken(token: string) {
 // Get Currently Logged In User from Cookies
 export async function getCurrentUser(): Promise<UserProfile | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;
     if (!token) return null;
 
@@ -82,8 +82,8 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
 }
 
 // Set Session Cookie
-export function setSessionCookie(token: string) {
-  const cookieStore = cookies();
+export async function setSessionCookie(token: string) {
+  const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -94,8 +94,8 @@ export function setSessionCookie(token: string) {
 }
 
 // Clear Session Cookie
-export function clearSessionCookie() {
-  const cookieStore = cookies();
+export async function clearSessionCookie() {
+  const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
