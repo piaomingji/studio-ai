@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { buildPrompt, getStyle, type BgColor } from "../../lib/styles";
 import { createClient } from "@vercel/kv";
-import { getCurrentUser, deductUserCredit } from "@/lib/auth";
+import { getCurrentUser, deductUserCredit, getIpQuotaFromCookie, incrementIpQuotaCookie } from "@/lib/auth";
 
 const kv = createClient({
   url: process.env.KV_REST_API_URL || process.env.REDIS_REST_API_URL || "",
@@ -65,11 +65,33 @@ export async function POST(req: NextRequest) {
     const bgColor: BgColor | undefined = body.bgColor;
     const rawCustomPrompt: string | undefined = body.customPrompt;
 
-    const currentUser = await getCurrentUser();
+        const currentUser = await getCurrentUser();
     let remainingCredits: number | undefined = undefined;
+    const ipQuotaCount = await getIpQuotaFromCookie();
 
     if (currentUser) {
-      // User is logged in: Check user credits or subscription
+      if (currentUser.plan === "free" && currentUser.credits <= 0) {
+        return NextResponse.json(
+          {
+            error: "残りの生成クレジットがありません。有料プランへのご加入、または追加クレジットのご購入をお願いいたします。",
+            requiresUpgrade: true,
+            remainingCredits: 0,
+          },
+          { status: 403 }
+        );
+      }
+
+      if (currentUser.plan === "free" && ipQuotaCount >= 10) {
+        return NextResponse.json(
+          {
+            error: "このIPアドレス（端末）からの無料利用枠（合計10回）を超過しました。有料プラン（Proプラン）へのお申し込みが必要です。",
+            requiresUpgrade: true,
+            remainingCredits: 0,
+          },
+          { status: 403 }
+        );
+      }
+
       const { success, remainingCredits: updatedCredits } = await deductUserCredit(currentUser.id);
       if (!success) {
         return NextResponse.json(
@@ -81,26 +103,26 @@ export async function POST(req: NextRequest) {
           { status: 403 }
         );
       }
+      await incrementIpQuotaCookie();
       remainingCredits = updatedCredits;
     } else {
-      // Anonymous user: Enforce IP-based trial limit (3 generations)
-      const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.ip || "127.0.0.1";
-      const key = `studio-ai:ip:${ip}`;
+      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "127.0.0.1";
+      const key = `studio_ai:ip:${ip}`;
       const count = await safeKvGet(key);
-
-      if (count >= 3) {
+      const isKvAvailable = !!process.env.KV_REST_API_URL;
+      
+      if (ipQuotaCount >= 5 || (isKvAvailable && count >= 5) || (ipQuotaCount >= 5)) {
         return NextResponse.json(
           {
-            error: "無料お試しの制限回数（3回）を超過しました。無料会員登録をすると+3回分のクレジットを獲得できます！",
+            error: "この端末（IP）からの無料お試しの制限回数（5回）を超過しました。無料会員登録をするとさらにクレジットを獲得できます！",
             requiresAuth: true,
             requiresUpgrade: true,
           },
           { status: 403 }
         );
       }
-
-      // Record trial count permanently
       await safeKvSet(key, count + 1);
+      await incrementIpQuotaCookie();
     }
 
     if (!imageBase64) {
