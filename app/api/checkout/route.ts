@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { getCurrentUser, addUserCredits } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -43,16 +43,15 @@ export async function POST(req: NextRequest) {
 
     // Stripe Secret Key が設定されていない場合、シミュレーション決済（Mock）にリダイレクト
     if (!stripeKey || stripeKey === 'your_stripe_secret_key_here') {
-      console.warn('STRIPE_SECRET_KEY is not configured. Running in Mock Mode.');
-      // Auto credit user in mock mode for instant testing!
-      if (planId === 'quota') {
-        await addUserCredits(user.id, 20);
-      } else if (planId === 'pro' || planId === 'business') {
-        await addUserCredits(user.id, 100, 'pro');
-      }
-      return NextResponse.json({
-        url: `${origin}/checkout-success?mock=true&plan=${planId}`,
-      });
+      // There used to be a "mock mode" here that simply granted the plan when no Stripe key was
+      // configured. It exists for local development, but it shipped: had the key ever gone missing
+      // in production -- a typo, a rotated secret, a new environment -- anyone could have taken a
+      // paid plan for nothing. Refusing is the safe failure.
+      console.error('STRIPE_SECRET_KEY is not configured; checkout cannot run.');
+      return NextResponse.json(
+        { error: '決済機能が現在ご利用いただけません。時間をおいてお試しください。' },
+        { status: 503 }
+      );
     }
 
     const stripe = new Stripe(stripeKey);
@@ -65,6 +64,8 @@ export async function POST(req: NextRequest) {
         payment_method_types: ['card'],
         client_reference_id: user.id,
         customer_email: user.email,
+        // Carried through to the webhook, which is the only place entitlements are granted.
+        metadata: { userId: user.id, planId },
         line_items: [
           {
             price_data: {
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
           },
         ],
         mode: 'subscription',
+        subscription_data: { metadata: { userId: user.id, planId } },
         success_url: `${origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}&plan=pro`,
         cancel_url: `${origin}/#pricing`,
       });
@@ -89,6 +91,8 @@ export async function POST(req: NextRequest) {
         payment_method_types: ['card'],
         client_reference_id: user.id,
         customer_email: user.email,
+        // Carried through to the webhook, which is the only place entitlements are granted.
+        metadata: { userId: user.id, planId },
         line_items: [
           {
             price_data: {
@@ -104,6 +108,7 @@ export async function POST(req: NextRequest) {
           },
         ],
         mode: 'subscription',
+        subscription_data: { metadata: { userId: user.id, planId } },
         success_url: `${origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}&plan=business`,
         cancel_url: `${origin}/#pricing`,
       });
@@ -113,6 +118,8 @@ export async function POST(req: NextRequest) {
         payment_method_types: ['card'],
         client_reference_id: user.id,
         customer_email: user.email,
+        // Carried through to the webhook, which is the only place entitlements are granted.
+        metadata: { userId: user.id, planId },
         line_items: [
           {
             price_data: {
