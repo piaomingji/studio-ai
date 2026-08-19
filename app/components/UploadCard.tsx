@@ -255,7 +255,21 @@ export default function UploadCard() {
         }),
       });
 
-      const data = await response.json();
+      // A failed request does not always carry JSON. When a generation runs past the platform's time
+      // limit the reply is the host's own plain-text notice, and parsing it threw
+      // "Unexpected token 'A'" at the person instead of telling them what happened.
+      const raw = await response.text();
+      let data: { error?: string; requiresAuth?: boolean; remainingCredits?: number; lite?: ModelResult; pro?: ModelResult } = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = {
+          error:
+            response.status === 504 || /An error occurred/i.test(raw)
+              ? "生成に時間がかかりすぎたため中断されました。写真のサイズを小さくするか、しばらく待ってから再度お試しください。（この回のクレジットは消費されません）"
+              : "サーバーから予期しない応答が返りました。時間をおいて再度お試しください。",
+        };
+      }
 
       if (!response.ok) {
         if (data.requiresAuth) {
@@ -272,6 +286,10 @@ export default function UploadCard() {
         localStorage.setItem("studio_ai_free_generations", String(nextCount));
         setFreeCount(nextCount);
         window.dispatchEvent(new Event("storage"));
+      }
+
+      if (!data.lite || !data.pro) {
+        throw new Error("生成結果を受け取れませんでした。もう一度お試しください。");
       }
 
       setUsedStyleId(selectedStyleId);

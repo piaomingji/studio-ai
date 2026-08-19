@@ -1,33 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { buildPrompt, getStyle, type BgColor } from "../../lib/styles";
-import { createClient } from "@vercel/kv";
+import { quotaGet, quotaIncrement } from "@/lib/quotaStore";
+import { IP_QUOTA_KEY, GOOGLE_QUOTA_KEY, QUOTA_TTL_SECONDS, FREE_TOTAL_CREDITS, FREE_GUEST_CREDITS } from "@/lib/quota";
 import { getCurrentUser, deductUserCredit, getIpQuotaFromCookie, incrementIpQuotaCookie } from "@/lib/auth";
 
-const kv = createClient({
-  url: process.env.KV_REST_API_URL || process.env.REDIS_REST_API_URL || "",
-  token: process.env.KV_REST_API_TOKEN || process.env.REDIS_REST_API_TOKEN || "",
-});
-
+/**
+ * Counters used to live in @vercel/kv, which speaks Redis over HTTP and needs KV_REST_API_URL and
+ * KV_REST_API_TOKEN. Neither was ever set, so every read returned 0 and every write was dropped:
+ * the free limit was never actually enforced. They now go through the shared store, which uses the
+ * plain redis:// URL the Vercel Redis integration provides.
+ */
 async function safeKvGet(key: string): Promise<number> {
-  try {
-    if (!process.env.KV_REST_API_URL && !process.env.REDIS_REST_API_URL) return 0;
-    const val = await kv.get<number>(key);
-    return typeof val === "number" ? val : 0;
-  } catch (e) {
-    console.warn("KV get failed:", e);
-    return 0;
-  }
+  return await quotaGet(key);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function safeKvSet(key: string, value: number, opts?: any) {
-  try {
-    if (!process.env.KV_REST_API_URL && !process.env.REDIS_REST_API_URL) return;
-    await kv.set(key, value, opts);
-  } catch (e) {
-    console.warn("KV set failed:", e);
-  }
+/** Counts one use. Incrementing in the database avoids two requests racing and losing a count. */
+async function bumpCounter(key: string): Promise<number> {
+  return await quotaIncrement(key, QUOTA_TTL_SECONDS);
 }
 
 export const runtime = "nodejs";
@@ -70,11 +60,19 @@ export async function POST(req: NextRequest) {
     const ipQuotaCount = await getIpQuotaFromCookie();
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "127.0.0.1";
-    const ipKey = `studio_ai:ip:${ip}`;
+    const ipKey = IP_QUOTA_KEY(ip);
     const currentIpCount = await safeKvGet(ipKey);
     const effectiveIpCount = Math.max(ipQuotaCount, currentIpCount);
 
     if (currentUser) {
+      // The account's own counter matters as much as the device's: signing in with a second Google
+      // account on the same device must not hand out a fresh allowance, and the same account used
+      // from a second device must not either. Whichever count is higher is the one that applies.
+      const accountCount = currentUser.email
+        ? await safeKvGet(GOOGLE_QUOTA_KEY(currentUser.email))
+        : 0;
+      const effectiveCount = Math.max(effectiveIpCount, accountCount);
+
       if (currentUser.plan === "free" && currentUser.credits <= 0) {
         return NextResponse.json(
           {
@@ -86,7 +84,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (currentUser.plan === "free" && effectiveIpCount >= 6) {
+      if (currentUser.plan === "free" && effectiveCount >= FREE_TOTAL_CREDITS) {
         return NextResponse.json(
           {
             error: "このIPアドレス（端末）からの無料利用枠（合計6回）を超過しました。有料プラン（Proプラン）へのお申し込みが必要です。",
@@ -97,22 +95,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const { success, remainingCredits: updatedCredits } = await deductUserCredit(currentUser.id);
-      if (!success) {
-        return NextResponse.json(
-          {
-            error: "残りの生成クレジットがありません。有料プランへのご加入、または追加クレジットのご購入をお願いいたします。",
-            requiresUpgrade: true,
-            remainingCredits: 0,
-          },
-          { status: 403 }
-        );
-      }
-      await safeKvSet(ipKey, currentIpCount + 1);
-      await incrementIpQuotaCookie();
-      remainingCredits = updatedCredits;
+      // The credit is taken after the image exists, not here. Charging up front meant a generation
+      // that timed out or was refused still cost the person a credit, with nothing to show for it --
+      // and when the platform kills the request there is no code left running to give it back.
+      remainingCredits = currentUser.credits;
     } else {
-      if (effectiveIpCount >= 3) {
+      if (effectiveIpCount >= FREE_GUEST_CREDITS) {
         return NextResponse.json(
           {
             error: "この端末（IP）からの無料お試しの制限回数（3回）を超過しました。無料会員登録をするとさらにクレジットを獲得できます！",
@@ -122,8 +110,6 @@ export async function POST(req: NextRequest) {
           { status: 403 }
         );
       }
-      await safeKvSet(ipKey, currentIpCount + 1);
-      await incrementIpQuotaCookie();
     }
 
     if (!imageBase64) {
@@ -226,6 +212,20 @@ export async function POST(req: NextRequest) {
 
     if (!proResult.success) {
       throw new Error(`AIモデルでの生成に失敗しました。: ${proResult.error}`);
+    }
+
+    // Now that there is an image to hand back, record the use: deduct the credit, count it against
+    // both the connection and the account, and advance the cookie. Nothing above this point costs
+    // the person anything.
+    if (currentUser) {
+      const { success, remainingCredits: updatedCredits } = await deductUserCredit(currentUser.id);
+      if (success) remainingCredits = updatedCredits;
+      await bumpCounter(IP_QUOTA_KEY(ip));
+      if (currentUser.email) await bumpCounter(GOOGLE_QUOTA_KEY(currentUser.email));
+      await incrementIpQuotaCookie();
+    } else {
+      await bumpCounter(IP_QUOTA_KEY(ip));
+      await incrementIpQuotaCookie();
     }
 
     return NextResponse.json({
