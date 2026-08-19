@@ -9,6 +9,8 @@ export interface UserProfile {
   avatarUrl?: string;
   plan: "free" | "pro" | "unlimited";
   credits: number;
+  /** True once the account has paid for anything -- a credit pack counts, not just a subscription. */
+  hasPurchased?: boolean;
   createdAt: string;
 }
 

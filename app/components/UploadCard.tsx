@@ -61,6 +61,15 @@ export default function UploadCard() {
   const [freeCount, setFreeCount] = useState<number>(3);
   const [userPlan, setUserPlan] = useState<string>("free");
 
+  /**
+   * Whether this person may download what they generated.
+   *
+   * It used to be "is the plan pro", which shut out anyone who had bought a credit pack: they paid,
+   * generated an image, and then could not keep it. Buying anything is what matters here, not which
+   * thing was bought.
+   */
+  const canSave = Boolean(user?.hasPurchased) || userPlan !== "free";
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync with localStorage on mount and listen to changes
@@ -434,10 +443,10 @@ export default function UploadCard() {
               </div>
 
               <div className="w-full flex gap-2 max-w-[280px]">
-                {userPlan === "free" ? (
+                {!canSave ? (
                   <button
                     onClick={() => {
-                      alert("無料プランでは生成画像のダウンロード制限がかかっています。ダウンロードしてご利用いただくには、PROまたは法人プランへのご加入をお願いいたします。");
+                      alert("画像の保存は有料プランまたは追加パックをご購入いただいた方がご利用いただけます。");
                       const element = document.getElementById("pricing");
                       if (element) {
                         element.scrollIntoView({ behavior: "smooth" });
@@ -448,7 +457,7 @@ export default function UploadCard() {
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    保存する（要プロ登録）
+                    保存する（要購入）
                   </button>
                 ) : (
                   <a
