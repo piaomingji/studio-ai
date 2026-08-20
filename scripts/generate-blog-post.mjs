@@ -174,118 +174,207 @@ async function generateArticle(selectedTopic) {
   return JSON.parse(textContent);
 }
 
-// 記事の内容に沿ったアイキャッチ画像を生成する関数 (gemini-3.1-flash-image)
+// ===================== アイキャッチ画像の生成 =====================
+// 2026-08 変更点:
+//   旧 imagen-3.0-generate-002 は Google 側で提供終了（後継の imagen-4.0 系も
+//   2026-08-17 に提供終了）。そのため毎日の生成が失敗し、記事と無関係な
+//   Unsplash 画像や低解像度の代替画像が公開されていた。
+//   → Nano Banana 系（gemini-3-pro-image / gemini-3.1-flash-image）に移行し、
+//     低品質なフォールバックは全廃した。画像が作れなければ記事も追加しない。
+const IMAGE_MODELS = ['gemini-3-pro-image', 'gemini-3.1-flash-image'];
+const ATTEMPTS_PER_MODEL = 2;
+const MIN_IMAGE_BYTES = 30000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// generateContent 形式のレスポンスから画像バイト列を取り出す
+function pickInlineImage(response) {
+  const parts = response?.candidates?.[0]?.content?.parts ?? [];
+  for (const part of parts) {
+    const data = part?.inlineData?.data ?? part?.inline_data?.data;
+    if (data) return Buffer.from(data, 'base64');
+  }
+  return null;
+}
+
+// interactions 形式のレスポンスから画像バイト列を取り出す
+function pickInteractionImage(interaction) {
+  const direct = interaction?.output_image?.data ?? interaction?.outputImage?.data;
+  if (direct) return Buffer.from(direct, 'base64');
+  for (const step of interaction?.steps ?? []) {
+    for (const block of step?.content ?? []) {
+      const isImage = block?.type === 'image' ||
+        (typeof block?.mime_type === 'string' && block.mime_type.startsWith('image/'));
+      if (isImage && block?.data) return Buffer.from(block.data, 'base64');
+    }
+  }
+  return null;
+}
+
+// 1モデルで1回だけ画像生成を試みる（新旧2つのAPI形式に対応）
+async function renderImage(ai, model, prompt) {
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseModalities: ['IMAGE'],
+        imageConfig: { aspectRatio: '16:9', imageSize: '2K' }
+      }
+    });
+    const buffer = pickInlineImage(response);
+    if (buffer && buffer.length > MIN_IMAGE_BYTES) return buffer;
+    console.log(`  [${model}] generateContent: 画像が返りませんでした`);
+  } catch (error) {
+    console.log(`  [${model}] generateContent 失敗: ${error.message}`);
+  }
+
+  if (typeof ai.interactions?.create === 'function') {
+    try {
+      const interaction = await ai.interactions.create({
+        model,
+        input: prompt,
+        response_format: {
+          type: 'image',
+          mime_type: 'image/jpeg',
+          aspect_ratio: '16:9',
+          image_size: '2K'
+        }
+      });
+      const buffer = pickInteractionImage(interaction);
+      if (buffer && buffer.length > MIN_IMAGE_BYTES) return buffer;
+      console.log(`  [${model}] interactions: 画像が返りませんでした`);
+    } catch (error) {
+      console.log(`  [${model}] interactions 失敗: ${error.message}`);
+    }
+  }
+
+  return null;
+}
+
+// ブログ表示用の画像圧縮
+// 生成直後の画像は 2752x1536・3MB 前後あり、ブログの読み込みが重くなる。
+// 幅1600pxまで縮小し、品質82のJPEGに変換して 300KB 前後まで落とす（見た目はほぼ変わらない）。
+// sharp が入っていない環境では圧縮せずそのまま保存する（生成自体は止めない）。
+const MAX_IMAGE_WIDTH = 1600;
+const JPEG_QUALITY = 82;
+
+async function compressJpeg(buffer) {
+  try {
+    const sharp = (await import('sharp')).default;
+    const output = await sharp(buffer)
+      .rotate()
+      .resize({ width: MAX_IMAGE_WIDTH, withoutEnlargement: true })
+      .jpeg({ quality: JPEG_QUALITY, mozjpeg: true, progressive: true })
+      .toBuffer();
+    if (output.length > 0 && output.length < buffer.length) {
+      console.log(`  圧縮: ${Math.round(buffer.length / 1024)}KB -> ${Math.round(output.length / 1024)}KB`);
+      return output;
+    }
+    return buffer;
+  } catch (error) {
+    console.log(`  警告: 画像を圧縮できませんでした（npm install sharp が必要です）: ${error.message}`);
+    return buffer;
+  }
+}
+
+// pro → flash の順に、各モデル2回ずつ試す。すべて駄目なら例外を投げる（＝記事を追加しない）
+async function renderImageWithFallback(ai, prompt) {
+  for (const model of IMAGE_MODELS) {
+    for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
+      console.log(`画像生成を試行中: ${model} (${attempt}/${ATTEMPTS_PER_MODEL})`);
+      const buffer = await renderImage(ai, model, prompt);
+      if (buffer) {
+        console.log(`画像生成に成功しました: ${model} (${Math.round(buffer.length / 1024)}KB)`);
+        return compressJpeg(buffer);
+      }
+      if (attempt < ATTEMPTS_PER_MODEL) await sleep(4000);
+    }
+  }
+  throw new Error(
+    'アイキャッチ画像を生成できませんでした。品質の低い代替画像は使用しない方針のため、今回の記事は追加しません。'
+  );
+}
+
+// 同じような人物の写真ばかり並ばないよう、記事ごとに人物像を変える
+// （旧スクリプトは似た雰囲気の女性のストック写真ばかり選んでいた）
+const PERSONAS = [
+  'a woman in her early 20s with shoulder-length straight black hair',
+  'a man in his early 20s with a neat short haircut',
+  'a woman in her late 20s with long dark hair worn down',
+  'a man in his late 20s with softly textured short hair and glasses',
+  'a woman in her early 30s with her hair tied back neatly',
+  'a man in his early 30s with a tidy business haircut',
+  'a woman in her late 30s with a chin-length bob',
+  'a man in his late 30s with short hair and a calm, reliable expression',
+  'a woman in her 40s with a short elegant haircut',
+  'a man in his 50s with greying hair and a trustworthy, experienced look'
+];
+
+function pickPersona(slug) {
+  let hash = 0;
+  for (let i = 0; i < slug.length; i++) {
+    hash = slug.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return PERSONAS[Math.abs(hash) % PERSONAS.length];
+}
+
+// 記事の内容に沿ったアイキャッチ画像を生成する（必ず Buffer を返す。作れなければ例外）
 async function generateImage(title, excerpt, defaultEyecatch, keywords, existingEyecatches, slug) {
+  console.log(`Generating matching eyecatch image for slug: ${slug}`);
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY, vertexai: false });
+  const persona = pickPersona(slug);
+  console.log(`  この記事の人物像: ${persona}`);
+
   const promptForImagePrompt = `
-You are an expert prompt engineer for AI image generators.
-Create a highly detailed, descriptive English prompt for generating a blog cover image that perfectly matches the following article:
+You are an expert prompt engineer for Google's Gemini image model (Nano Banana).
+Write ONE detailed English prompt for a 16:9 blog cover photograph that matches this Japanese article about ID photos, profile photos and portrait photography (証明写真・プロフィール写真).
 
 Article Title: ${title}
 Article Excerpt: ${excerpt}
+Keywords: ${(keywords || []).join(', ')}
 
-MANDATORY REQUIREMENTS FOR HIGH-CTR CLICK-WORTHY IMAGES:
-1. MUST be photorealistic, ultra-high quality, 8k resolution studio portrait photography of an attractive Japanese person.
-2. Must feature warm, inviting studio lighting, sharp focus, clean background, and elegant aesthetic.
-3. NO uncanny artifacts, NO text, NO empty distorted scenes.
-1. Describe a realistic, high-quality, professional studio portrait photograph of an Asian person (either man or woman in neat clothing).
-2. The image MUST visually represent the theme of the article. For example:
-   - If the article is about "formal ID photo" or "passport", describe a professional head-and-shoulders portrait of an Asian person in a clean dark suit, facing directly forward, with flat studio lighting and a plain white or light blue backdrop.
-   - If the article is about "business profile" or "LinkedIn", describe a confident, friendly corporate headshot of an Asian professional (man or woman) in smart-casual business attire with soft studio lighting.
-   - If the article is about "SNS icons" or "salon model", describe an artistic, warm-lit studio portrait with beautiful hair styling and modern aesthetic.
-3. Specify realistic lighting (e.g., "even studio lighting", "soft studio portrait lighting") and high-end camera details (e.g., "sharp focus, professional portrait photography, detailed hair and skin textures, 8k resolution").
-4. Do NOT include any text, overlays, UI elements, signs, or borders in the image.
-5. The prompt must be in English and output ONLY the prompt text, without any introductory or concluding remarks.
+SUBJECT PERSON (important for variety)
+The blog already has many cover photos, and they must not all show the same kind of person.
+Unless the article clearly requires otherwise, the person in this photo must be: **${persona}**.
+Exceptions that override the above:
+  - 就活 / 新卒 / 履歴書 -> a job-hunting student in their early 20s
+  - 子供 / 赤ちゃん / キッズ -> a child or baby of the age the article discusses
+  - 婚活 / マッチングアプリ -> someone in their 20s-30s dressed for a first impression
+  - シニア / 遺影 -> an older adult
+Describe this person's age, gender, hairstyle and clothing explicitly in the prompt so the
+generated face is clearly different from a generic young model.
+
+RULES
+1. THE SUBJECT MUST MATCH THE ARTICLE. Read the title carefully:
+   - 証明写真 / 履歴書 / パスポート / 免許証 / マイナンバー -> a straight-on head-and-shoulders portrait of a Japanese person in a dark suit, facing the camera, flat even lighting, plain white or pale blue backdrop
+   - 背景 / 背景色 / 背景選び -> the SAME portrait composed so the plain studio backdrop itself is the visual subject, with a clean gradient of backdrop colour clearly visible behind the person
+   - ビジネスプロフィール / LinkedIn -> a confident corporate headshot in smart business attire, soft directional studio light
+   - 就活 / 面接 / 転職 -> a neatly groomed young Japanese person in a recruit suit, calm confident expression
+   - SNSアイコン / サロンモデル -> a warm, stylish artistic studio portrait with beautiful hair styling
+   - 宣材写真 / オーディション -> a three-quarter length promotional portrait with dramatic but clean lighting
+   - 写真スタジオ選び / 写真館 / スピード写真機との比較 -> the interior of a tidy professional photo studio: seamless backdrop, softbox lights, camera on a tripod (a person may or may not appear)
+   - 撮り方 / 写り / メイク / 髪型 -> a portrait where the face, hair and makeup are clearly and flatteringly lit
+2. Any person shown must be a natural-looking Japanese adult with realistic skin texture, symmetrical undistorted features, correct number of fingers, and neat clothing. No uncanny faces, no warped hands, no melted collars or misaligned eyes.
+3. Describe a photorealistic professional studio photograph: name the lighting setup (e.g. "even softbox key light with a fill card", "soft window-lit portrait light"), the lens feel (e.g. "85mm portrait lens, shallow but controlled depth of field"), and demand tack-sharp focus on the eyes.
+4. Clean, uncluttered, high-end commercial photography quality.
+5. The image must contain NO text, NO Japanese characters, NO letters, NO logos, NO watermarks, NO UI elements, NO frames, and NO collage or split-screen layouts.
+6. Output ONLY the prompt text, with no preamble or closing remarks.
 `;
 
-  try {
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY, vertexai: false });
-    const promptResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: promptForImagePrompt
-    });
+  const promptResponse = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: promptForImagePrompt
+  });
 
-    const imagePrompt = promptResponse.text.trim();
-    console.log(`Generated Image Prompt: ${imagePrompt}`);
+  const imagePrompt = promptResponse.text.trim();
+  console.log(`Generated Image Prompt: ${imagePrompt}`);
 
-    console.log("Attempting to generate image via Imagen 3 (imagen-3.0-generate-002)...");
-    const imageResponse = await ai.models.generateImages({
-      model: "imagen-3.0-generate-002",
-      prompt: `${imagePrompt}, professional studio portrait photography, beautiful clean studio backdrop, 8k resolution, crisp lighting`,
-      config: {
-        numberOfImages: 1,
-        aspectRatio: "16:9",
-        outputMimeType: "image/jpeg"
-      }
-    });
+  const finalPrompt = `${imagePrompt}
 
-    if (imageResponse && imageResponse.generatedImages && imageResponse.generatedImages.length > 0) {
-      const base64Image = imageResponse.generatedImages[0].image.imageBytes;
-      console.log("Successfully generated image via Imagen 3!");
-      return { type: 'buffer', data: Buffer.from(base64Image, 'base64') };
-    }
-    throw new Error('Image data not found in response');
-  } catch (error) {
-    console.log('Gemini Image generation failed. Falling back to specific image...', error.message);
-    
-    // プリセットのデフォルト画像が指定されており、まだ使われていない場合はそれを使用
-    if (defaultEyecatch && !existingEyecatches.includes(defaultEyecatch)) {
-      console.log(`Using default preset eyecatch: ${defaultEyecatch}`);
-      return { type: 'url', data: defaultEyecatch };
-    }
+Photorealistic professional studio portrait photography, 16:9 horizontal composition, clean studio backdrop, natural realistic skin texture, tack-sharp focus on the eyes, high-end commercial retouching quality. Absolutely no text, letters, characters, logos or watermarks anywhere in the image, and no collage or split-screen layout.`;
 
-    // 静的なフォールバック画像リスト（他で使用済みのURLは排除する - 美しいスタジオポートレート、メイクアップ、ビフォーアフター、スタジオ設備）
-    const photoIds = [
-      // K-Pop / Classic Portrait Portraits (60)
-      'photo-1507003211169-0a1dd7228f2d', 'photo-1494790108377-be9c29b29330', 'photo-1534528741775-53994a69daeb', 'photo-1500648767791-00dcc994a43e',
-      'photo-1544005313-94ddf0286df2', 'photo-1506794778202-cad84cf45f1d', 'photo-1517841905240-472988babdf9', 'photo-1539571696357-5a69c17a67c6',
-      'photo-1524504388940-b1c1722653e1', 'photo-1488426862026-3ee34a7d66df', 'photo-1508214751196-bcfd4ca60f91', 'photo-1519085360753-af0119f7cbe7',
-      'photo-1492562080023-ab3db95bfbce', 'photo-1547425260-76bcadfb4f2c', 'photo-1501196354995-cbb51c65aaea', 'photo-1573496359142-b8d87734a5a2',
-      'photo-1580489944761-15a19d654956', 'photo-1509783236416-c9ad59bab472', 'photo-1519345182560-3f2917c472ef', 'photo-1438761681033-6461ffad8d80',
-      'photo-1485893086445-ed75865251e0', 'photo-1500048993953-d23a436266cf', 'photo-1519052537078-e6302a4968d4', 'photo-1531746020798-e6953c6e8e04',
-      'photo-1554151228-14d9def656e4', 'photo-1567532939604-b6b5b0db2604', 'photo-1580489944761-15a19d654956', 'photo-1504257406236-90dd59b30b54',
-      'photo-1531123897727-8f129e1688ce', 'photo-1506863530036-1efeddceb993', 'photo-1521119989659-a83eee488004', 'photo-1548142813-c348350df52b',
-      'photo-1552058544-f2b08422138a', 'photo-1560250097-0b93528c311a', 'photo-1566492031773-4f4e44671857', 'photo-1570295999919-56ceb5ecca61',
-      'photo-1573497019940-1c28c88b4f3e', 'photo-1589571894960-20bbe2828d02', 'photo-1607746882042-944635dfe10e', 'photo-1614644147724-2d4785d69962',
-      'photo-1619380061814-58f03707f082', 'photo-1628157582853-a796fa650a6a', 'photo-1522075469751-3a6694fb2f61', 'photo-1534308983496-4fabb1a015ee',
-      'photo-1542909168-82c3e7fdca5c', 'photo-1558203728-00f45181dd84', 'photo-1581092921461-eab62e97a780', 'photo-1584999734482-0361aecad10e',
-      'photo-1589156280159-27698a70f29e', 'photo-1599566150163-29194dcaad36', 'photo-1601412436009-d964bd02edbc', 'photo-1613145400657-3f95f48ad313',
-      'photo-1618077360395-f3068be8e001', 'photo-1618151313441-bc797fd88350', 'photo-1624561172888-ac93c696e10c', 'photo-1628890923662-2cb23c225a95',
-      'photo-1543130006-aa9b02047806', 'photo-1552374196-1ab2a1c593e8', 'photo-1595152772835-219674b2a8a6', 'photo-1584999734482-0361aecad10e',
-      // Studio Scenes & Camera/Lighting setups (20)
-      'photo-1542038784456-1ea8e935640e', 'photo-1516035069371-29a1b244cc32', 'photo-1453060113865-968ce150c724', 'photo-1603566723801-4993ef933054',
-      'photo-1520390138845-12522961e241', 'photo-1502444330042-d1a1ddf9b082', 'photo-1590602847861-f357a9332bbc', 'photo-1526374965328-7f61d4dc18c5',
-      'photo-1616469829581-73993eb86b02', 'photo-1495707902641-75cac588d2e9', 'photo-1621252179027-94459d278660', 'photo-1615247001958-f4bc92fa6a4a',
-      'photo-1492691527719-9d1e07e534b4', 'photo-1511556532299-8f662fc26c06', 'photo-1519751138087-5bf79df62d5b', 'photo-1560066984-138dadb4c035',
-      'photo-1595853035070-5f29917d2abd', 'photo-1606761568288-402b5e7d229f', 'photo-1607604276583-eef5d076aa5f', 'photo-1616440347437-b1c73416efc2',
-      // Before-After / Makeovers / Beauty / Hair Salons (20)
-      'photo-1522337360788-8b13dee7a37e', 'photo-1487412720507-e7ab37603c6f', 'photo-1512496015851-a90fb38ba796', 'photo-1596462502278-27bfdc403348',
-      'photo-1607604276583-eef5d076aa5f', 'photo-1562322140-8baeececf3df', 'photo-1527799881374-de5a91d186b5', 'photo-1616683693504-3ea7e9ad6fec',
-      'photo-1515688594390-b649af70d282', 'photo-1522337094846-8a818192de2f', 'photo-1560066984-138dadb4c035', 'photo-1595425970377-c9703cf48b6d',
-      'photo-1600948836101-f9ffda59d250', 'photo-1600334129128-685c5582fd35', 'photo-1605497746444-ac9db450f776', 'photo-1616683693504-3ea7e9ad6fec',
-      'photo-1620331311520-246422fd82f9', 'photo-1621574539437-4b7cb63120b8', 'photo-1626015276510-290f6158090d', 'photo-1632345031435-8797b2d58045'
-    ];
-
-    const fallbackImages = photoIds.map(id => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=80`);
-
-    // 未使用の画像のみにフィルタリング
-    const unusedFallbackImages = fallbackImages.filter(img => !existingEyecatches.includes(img));
-    
-    if (unusedFallbackImages.length > 0) {
-      const selectedUrl = unusedFallbackImages[Math.floor(Math.random() * unusedFallbackImages.length)];
-      console.log(`Using unused fallback Unsplash image URL: ${selectedUrl}`);
-      return { type: 'url', data: selectedUrl };
-    } else {
-      // すべて使用済みの場合は、slugのハッシュ値に基づいて決定論的にプールから選択し、リンク切れを回避
-      let hash = 0;
-      for (let i = 0; i < slug.length; i++) {
-        hash = slug.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      const index = Math.abs(hash) % fallbackImages.length;
-      const selectedUrl = fallbackImages[index];
-      console.log(`All fallback images used. Selecting deterministic image from pool: ${selectedUrl}`);
-      return { type: 'url', data: selectedUrl };
-    }
-  }
+  return renderImageWithFallback(ai, finalPrompt);
 }
 
 async function main() {
@@ -329,9 +418,9 @@ async function main() {
       article.slug = `${article.slug}-${Date.now().toString().slice(-4)}`;
     }
     
-    // 画像の自動生成
+    // 画像の生成とローカル保存（生成できなかった場合は例外を投げ、記事を追加せず終了する）
     console.log('Generating matching eyecatch image...');
-    const resultImage = await generateImage(article.title, article.excerpt, selectedTopic.defaultEyecatch, article.keywords, existingEyecatches, article.slug);
+    const imageBuffer = await generateImage(article.title, article.excerpt, selectedTopic.defaultEyecatch, article.keywords, existingEyecatches, article.slug);
     
     // 出力フォルダ（public/blog）が存在することを確認
     const blogDir = path.join(process.cwd(), 'public/blog');
@@ -339,16 +428,11 @@ async function main() {
       fs.mkdirSync(blogDir, { recursive: true });
     }
 
-    if (resultImage.type === 'buffer') {
-      const imageFilename = `${article.slug}.jpg`;
-      const imagePath = path.join(blogDir, imageFilename);
-      fs.writeFileSync(imagePath, resultImage.data);
-      console.log(`Saved eyecatch image to ${imagePath}`);
-      article.eyecatch = `/blog/${imageFilename}`;
-    } else {
-      console.log(`Using fallback Unsplash image URL: ${resultImage.data}`);
-      article.eyecatch = resultImage.data;
-    }
+    const imageFilename = `${article.slug}.jpg`;
+    const imagePath = path.join(blogDir, imageFilename);
+    fs.writeFileSync(imagePath, imageBuffer);
+    console.log(`Saved eyecatch image to ${imagePath}`);
+    article.eyecatch = `/blog/${imageFilename}`;
     
     // 本日の日付
     const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
@@ -373,18 +457,6 @@ async function main() {
     
     fs.writeFileSync(filePath, newContent, 'utf-8');
     console.log('Successfully added new article to lib/blog.ts');
-
-    // app/blog/page.tsx のリビルドタイムスタンプを更新して Vercel の静的ページ再構築を確実にトリガー
-    const blogPagePath = path.join(process.cwd(), 'app', 'blog', 'page.tsx');
-    if (fs.existsSync(blogPagePath)) {
-      let blogPageContent = fs.readFileSync(blogPagePath, 'utf-8');
-      blogPageContent = blogPageContent.replace(
-        /\/\/ Rebuild trigger: .*/,
-        `// Rebuild trigger: ${new Date().toISOString()}`
-      );
-      fs.writeFileSync(blogPagePath, blogPageContent, 'utf-8');
-      console.log('Updated app/blog/page.tsx rebuild timestamp');
-    }
   } catch (error) {
     console.error('Failed to run blog generation:', error);
     process.exit(1);
