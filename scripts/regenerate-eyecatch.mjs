@@ -1,35 +1,3 @@
-// Gemini API は混雑時に 503 / 429 / 500 を返すことがある。
-// （2026-08-21、Studio AI の自動生成が「This model is currently experiencing high demand」で
-//   1回で諦めて失敗した。記事本文を書くステップには再試行が無かった。）
-// 一時的な失敗なら待って自動で試し直す。指定回数を使い切ったときだけ例外にする。
-const API_RETRIES = 4;
-const RETRYABLE_HTTP = [408, 429, 500, 502, 503, 504];
-
-function isRetryableApiError(error) {
-  const status = Number(error?.status ?? error?.code ?? error?.response?.status);
-  if (RETRYABLE_HTTP.includes(status)) return true;
-  const text = `${error?.message ?? ''} ${error?.status ?? ''}`;
-  return /UNAVAILABLE|RESOURCE_EXHAUSTED|INTERNAL|DEADLINE_EXCEEDED|high demand|overloaded|rate limit|try again|ECONNRESET|ETIMEDOUT|fetch failed/i.test(text);
-}
-
-// label は失敗時のログに出す作業名
-async function withRetry(label, fn) {
-  let lastError;
-  for (let attempt = 1; attempt <= API_RETRIES; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (!isRetryableApiError(error) || attempt === API_RETRIES) throw error;
-      const waitMs = Math.min(60000, 15000 * attempt);
-      console.log(`  ${label}: 一時的なエラー (${attempt}/${API_RETRIES}) ${String(error?.message ?? error).slice(0, 200)}`);
-      console.log(`  ${Math.round(waitMs / 1000)}秒待ってから再試行します...`);
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
-    }
-  }
-  throw lastError;
-}
-
 // ========================================================================
 // 既存記事のアイキャッチ画像を作り直す一回限りのメンテナンス用スクリプト
 //
@@ -44,6 +12,7 @@ async function withRetry(label, fn) {
 //   node scripts/regenerate-eyecatch.mjs --limit 3     … 先頭3件だけ作り直す
 //   node scripts/regenerate-eyecatch.mjs               … 対象をすべて作り直す
 //   node scripts/regenerate-eyecatch.mjs --compress-only … 既存画像の圧縮だけ行う（無料）
+//   node scripts/regenerate-eyecatch.mjs --force        … 全記事を強制的に作り直す
 // ========================================================================
 import fs from 'fs';
 import path from 'path';
@@ -75,6 +44,9 @@ if (!GEMINI_API_KEY) {
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
 const COMPRESS_ONLY = args.includes('--compress-only');
+// --force: 画像の良し悪しに関わらず、全記事のアイキャッチを作り直す
+// （絵柄が似すぎているのを一新したいときに使う。記事数ぶんの費用がかかる）
+const FORCE_ALL = args.includes('--force');
 const limitIndex = args.indexOf('--limit');
 const LIMIT = limitIndex >= 0 ? parseInt(args[limitIndex + 1], 10) : Infinity;
 
@@ -211,7 +183,7 @@ async function renderImageWithFallback(ai, prompt) {
         console.log(`画像生成に成功しました: ${model} (${Math.round(buffer.length / 1024)}KB)`);
         return compressJpeg(buffer);
       }
-      if (attempt < ATTEMPTS_PER_MODEL) await sleep(20000);
+      if (attempt < ATTEMPTS_PER_MODEL) await sleep(4000);
     }
   }
   throw new Error(
@@ -219,35 +191,67 @@ async function renderImageWithFallback(ai, prompt) {
   );
 }
 
-// 同じような人物の写真ばかり並ばないよう、記事ごとに人物像を変える
-// （旧スクリプトは似た雰囲気の女性のストック写真ばかり選んでいた）
+// 同じような写真ばかり並ばないよう、記事ごとに人物・服装・背景・構図を変える
+// 以前は「濃紺のスーツ・無地グレー背景・正面バストアップ」ばかりが並んでしまっていた。
+// 記事番号（何本目の記事か）で順に割り当てるので、隣り合う記事は必ず別の組み合わせになる。
+// それぞれの周期（10 / 7 / 6 / 5）が互いに素なので、組み合わせは実質繰り返さない。
 const PERSONAS = [
-  'a woman in her early 20s with shoulder-length straight black hair',
-  'a man in his early 20s with a neat short haircut',
-  'a woman in her late 20s with long dark hair worn down',
-  'a man in his late 20s with softly textured short hair and glasses',
-  'a woman in her early 30s with her hair tied back neatly',
-  'a man in his early 30s with a tidy business haircut',
-  'a woman in her late 30s with a chin-length bob',
-  'a man in his late 30s with short hair and a calm, reliable expression',
-  'a woman in her 40s with a short elegant haircut',
-  'a man in his 50s with greying hair and a trustworthy, experienced look'
+  'a woman in her early 20s, round soft face, shoulder-length straight black hair',
+  'a man in his early 20s, slim build, neat short black hair',
+  'a woman in her late 20s, oval face, long dark brown hair worn down',
+  'a man in his late 20s, thin-framed glasses, softly textured hair',
+  'a woman in her early 30s, defined features, hair tied back neatly',
+  'a man in his early 30s, square jaw, tidy short hair',
+  'a woman in her late 30s, warm open smile, chin-length bob',
+  'a man in his late 30s, calm reliable expression, slightly greying temples',
+  'a woman in her 40s, elegant short haircut, confident posture',
+  'a man in his 50s, grey hair, experienced and trustworthy look'
 ];
 
-function pickPersona(slug) {
-  let hash = 0;
-  for (let i = 0; i < slug.length; i++) {
-    hash = slug.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return PERSONAS[Math.abs(hash) % PERSONAS.length];
+const BACKDROPS = [
+  'a plain bright white seamless backdrop',
+  'a soft pale blue gradient backdrop',
+  'a light warm grey seamless backdrop',
+  'a muted sage-green painted studio wall',
+  'a deep charcoal backdrop lit with a subtle rim light',
+  'a warm beige paper backdrop with a gentle vignette',
+  'a softly blurred bright office interior behind the subject'
+];
+
+const WARDROBES = [
+  'a navy suit with a light blue shirt and a simple tie',
+  'a charcoal suit with a crisp white shirt',
+  'a light grey jacket over a fine white knit, no tie',
+  'a black jacket with a cream blouse',
+  'a beige jacket over a pale shirt',
+  'smart casual: an open-collar shirt, no jacket'
+];
+
+const FRAMINGS = [
+  'a tight head-and-shoulders composition, centred, facing straight to camera',
+  'a chest-up composition with the body angled slightly and the face turned to camera',
+  'a waist-up three-quarter composition with relaxed shoulders',
+  'a chest-up composition shot slightly from the side with a soft turn of the head',
+  'a waist-up composition with arms lightly and naturally crossed'
+];
+
+// sequence は「何本目の記事か」。連番なので隣り合う記事の絵柄が必ずずれる
+function pickVariation(sequence) {
+  const n = Math.abs(Math.trunc(Number(sequence) || 0));
+  return {
+    persona: PERSONAS[n % PERSONAS.length],
+    backdrop: BACKDROPS[n % BACKDROPS.length],
+    wardrobe: WARDROBES[n % WARDROBES.length],
+    framing: FRAMINGS[n % FRAMINGS.length]
+  };
 }
 
 // 記事の内容に沿ったアイキャッチ画像を生成する（必ず Buffer を返す。作れなければ例外）
-async function generateImage(title, excerpt, defaultEyecatch, keywords, existingEyecatches, slug) {
+async function generateImage(title, excerpt, defaultEyecatch, keywords, existingEyecatches, slug, sequence) {
   console.log(`Generating matching eyecatch image for slug: ${slug}`);
   const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY, vertexai: false });
-  const persona = pickPersona(slug);
-  console.log(`  この記事の人物像: ${persona}`);
+  const variation = pickVariation(sequence);
+  console.log(`  この記事の絵柄: ${variation.persona} / ${variation.wardrobe} / ${variation.backdrop}`);
 
   const promptForImagePrompt = `
 You are an expert prompt engineer for Google's Gemini image model (Nano Banana).
@@ -257,39 +261,49 @@ Article Title: ${title}
 Article Excerpt: ${excerpt}
 Keywords: ${(keywords || []).join(', ')}
 
-SUBJECT PERSON (important for variety)
-The blog already has many cover photos, and they must not all show the same kind of person.
-Unless the article clearly requires otherwise, the person in this photo must be: **${persona}**.
-Exceptions that override the above:
-  - 就活 / 新卒 / 履歴書 -> a job-hunting student in their early 20s
-  - 子供 / 赤ちゃん / キッズ -> a child or baby of the age the article discusses
-  - 婚活 / マッチングアプリ -> someone in their 20s-30s dressed for a first impression
-  - シニア / 遺影 -> an older adult
-Describe this person's age, gender, hairstyle and clothing explicitly in the prompt so the
-generated face is clearly different from a generic young model.
+VARIATION FOR THIS ARTICLE — this matters as much as the subject
+This blog already has many cover photos and they were all turning out the same: a Japanese
+person in a dark navy suit, centred, on a plain grey backdrop. Do not produce that again.
+Unless the article clearly requires otherwise, build this photo around:
+  - Person:   ${variation.persona}
+  - Wardrobe: ${variation.wardrobe}
+  - Backdrop: ${variation.backdrop}
+  - Framing:  ${variation.framing}
+Write the age, gender, face shape, hairstyle, clothing colour, backdrop colour and framing
+explicitly into the prompt.
 
-RULES
-1. THE SUBJECT MUST MATCH THE ARTICLE. Read the title carefully:
-   - 証明写真 / 履歴書 / パスポート / 免許証 / マイナンバー -> a straight-on head-and-shoulders portrait of a Japanese person in a dark suit, facing the camera, flat even lighting, plain white or pale blue backdrop
-   - 背景 / 背景色 / 背景選び -> the SAME portrait composed so the plain studio backdrop itself is the visual subject, with a clean gradient of backdrop colour clearly visible behind the person
-   - ビジネスプロフィール / LinkedIn -> a confident corporate headshot in smart business attire, soft directional studio light
-   - 就活 / 面接 / 転職 -> a neatly groomed young Japanese person in a recruit suit, calm confident expression
-   - SNSアイコン / サロンモデル -> a warm, stylish artistic studio portrait with beautiful hair styling
-   - 宣材写真 / オーディション -> a three-quarter length promotional portrait with dramatic but clean lighting
-   - 写真スタジオ選び / 写真館 / スピード写真機との比較 -> the interior of a tidy professional photo studio: seamless backdrop, softbox lights, camera on a tripod (a person may or may not appear)
-   - 撮り方 / 写り / メイク / 髪型 -> a portrait where the face, hair and makeup are clearly and flatteringly lit
-2. Any person shown must be a natural-looking Japanese adult with realistic skin texture, symmetrical undistorted features, correct number of fingers, and neat clothing. No uncanny faces, no warped hands, no melted collars or misaligned eyes.
-3. Describe a photorealistic professional studio photograph: name the lighting setup (e.g. "even softbox key light with a fill card", "soft window-lit portrait light"), the lens feel (e.g. "85mm portrait lens, shallow but controlled depth of field"), and demand tack-sharp focus on the eyes.
-4. Clean, uncluttered, high-end commercial photography quality.
-5. The image must contain NO text, NO Japanese characters, NO letters, NO logos, NO watermarks, NO UI elements, NO frames, and NO collage or split-screen layouts.
-6. Output ONLY the prompt text, with no preamble or closing remarks.
+ARTICLE-DRIVEN EXCEPTIONS (these override the variation above)
+  - 証明写真 / パスポート / 免許証 / マイナンバー / ビザ / 履歴書
+      -> regulation style: formal dark suit, plain white or pale blue backdrop,
+         straight-on head-and-shoulders, flat even lighting, neutral expression
+  - 就活 / 新卒 / 面接 -> a neatly groomed person in their early 20s in a recruit suit
+  - 子供 / 赤ちゃん / キッズ -> a child or baby of the age the article discusses
+  - 婚活 / マッチングアプリ -> warmer, friendlier styling on someone in their 20s-30s
+  - SNSアイコン / サロンモデル / おしゃれ -> stylish casual clothing, artistic warm lighting
+  - 宣材写真 / オーディション -> a three-quarter length promotional portrait, dramatic clean light
+  - 写真スタジオ選び / 写真館 / スピード写真機との比較
+      -> the interior of a tidy professional photo studio: seamless backdrop, softboxes,
+         a camera on a tripod (a person may or may not appear)
+  - シニア / 遺影 -> an older adult, soft respectful lighting
+
+QUALITY RULES
+1. Any person shown must be a natural-looking Japanese person with realistic skin texture,
+   symmetrical undistorted features, correct hands, and neat clothing. No uncanny faces,
+   no warped hands, no melted collars, no misaligned eyes.
+2. Name the lighting setup (e.g. "even softbox key light with a fill card",
+   "soft window light from camera left") and the lens feel (e.g. "85mm portrait lens"),
+   and demand tack-sharp focus on the eyes.
+3. Clean, uncluttered, high-end commercial photography quality.
+4. The image must contain NO text, NO Japanese characters, NO letters, NO logos,
+   NO watermarks, NO UI elements, NO frames, and NO collage or split-screen layouts.
+5. Output ONLY the prompt text, with no preamble or closing remarks.
 `;
 
-  const promptResponse = await withRetry('テーマの生成', () =>
+  const promptResponse = await withRetry('画像プロンプトの生成', () =>
     ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: promptForImagePrompt
-  })
+      model: 'gemini-2.5-flash',
+      contents: promptForImagePrompt
+    })
   );
 
   const imagePrompt = promptResponse.text.trim();
@@ -297,15 +311,14 @@ RULES
 
   const finalPrompt = `${imagePrompt}
 
-Photorealistic professional studio portrait photography, 16:9 horizontal composition, clean studio backdrop, natural realistic skin texture, tack-sharp focus on the eyes, high-end commercial retouching quality. Absolutely no text, letters, characters, logos or watermarks anywhere in the image, and no collage or split-screen layout.`;
+Photorealistic professional portrait photography, 16:9 horizontal composition, natural realistic skin texture, tack-sharp focus on the eyes, high-end commercial retouching quality. Absolutely no text, letters, characters, logos or watermarks anywhere in the image, and no collage or split-screen layout.`;
 
   return renderImageWithFallback(ai, finalPrompt);
 }
 
-
 // 記事1件ぶんのアイキャッチを生成する
-async function generateEyecatch(ai, post) {
-  return generateImage(post.title, post.excerpt, null, post.keywords, [], post.slug);
+async function generateEyecatch(ai, post, sequence) {
+  return generateImage(post.title, post.excerpt, null, post.keywords, [], post.slug, sequence);
 }
 
 
@@ -338,6 +351,7 @@ function loadPosts(fileContent) {
 
 // 作り直しが必要かどうかを判定する
 function inspect(post) {
+  if (FORCE_ALL) return { needs: true, reason: '--force 指定のため作り直し' };
   if (!post.eyecatch) return { needs: true, reason: '画像が未設定' };
   if (/^https?:\/\//.test(post.eyecatch)) return { needs: true, reason: '外部URL（リンク切れの恐れ）' };
   const file = path.join(process.cwd(), 'public', post.eyecatch.replace(/^\//, ''));
@@ -425,7 +439,7 @@ async function main() {
   for (const [index, post] of queue.entries()) {
     console.log(`\n[${index + 1}/${queue.length}] ${post.title.slice(0, 40)}`);
     try {
-      const buffer = await generateEyecatch(ai, post);
+      const buffer = await generateEyecatch(ai, post, posts.indexOf(post));
       const filename = `${post.slug}.jpg`;
       fs.writeFileSync(path.join(blogDir, filename), buffer);
       succeeded.push({ post, eyecatch: `/blog/${filename}` });
